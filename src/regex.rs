@@ -1,46 +1,11 @@
 use std::collections::VecDeque;
-
- 
-
-pub struct RegexState{
-    value: RegexVal,
-    repetition: RegexRep,
-}
-
-
-pub struct Regex {
-    states: Vec<RegexState>
-}
-
-
+use crate::regex_state::RegexState;
+use crate::regex_value::RegexVal;
+use crate::regex_rep::RegexRep;
 
 #[derive(Debug)]
-pub enum RegexClass {
-    Alnum,  
-    Alpha,  
-    Digit,  
-    Lower,  
-    Upper,  
-    Space,  
-    Punct,  
-}
-
-
-
-#[derive()]
-pub enum RegexVal {
-    Literal(char),
-    Wildcard,
-    Class(RegexClass),
-}
-
-pub enum RegexRep {
-    Any,
-    Exact(usize),
-    Range{
-        min: Option<usize>,
-        max: Option<usize>
-    }
+pub struct Regex {
+    states: Vec<RegexState>
 }
 
 impl Regex { 
@@ -98,7 +63,7 @@ impl Regex {
         Ok(Regex{states})
     }
 
-    pub fn match(self, value: &str) -> Result<bool, &str> {
+    pub fn match_expression(self, value: &str) -> Result<bool, &str> {
         if !value.is_ascii() {
             return Err("el input no es ascii");
         }
@@ -110,18 +75,24 @@ impl Regex {
             match state.repetition {
                 RegexRep::Exact(n) => {
                     for _ in 0..n {
+                        //a matches le paso el input que quiero validar
+                        //obtengo el size, cuanto avanzo
                         let size = state.value.matches(&value[index..]);
 
                         if size == 0 {
                             //todo: check if we can backtrack
                             return Ok(false);
                         }
+                        //me muevo todo hacia adelante lo que mathcee
                         index += size;
                     }
                 },
                 RegexRep::Any => {
                     let mut keep_matching = true;
                     while keep_matching {
+                        //mientras siga matcheando en el caso any
+                        //matcheo el valor, si me devuelve algo me voy adelante
+                        //y vuelvo a matchear
                         let match_size = state.value.matches(&value[index..]);
                         if match_size != 0 {
                             index += match_size;
