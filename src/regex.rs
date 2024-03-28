@@ -63,48 +63,68 @@ impl Regex {
         Ok(Regex{states})
     }
 
-    pub fn match_expression(self, value: &str) -> Result<bool, &str> {
-        if !value.is_ascii() {
-            return Err("el input no es ascii");
-        }
+    pub fn match_expression(&self, value: &str) -> Result<bool, &str> {
+        let mut input_idx = 0;
+        let mut regex_idx = 0;
 
-        let mut queue = VecDeque::from(self.states);
-        let mut index = 0;
+        while regex_idx < self.states.len() {
+            let state = &self.states[regex_idx];
+            let mut consumed = 0;
 
-        while let Some(state) = queue.pop_front() {
-            match state.repetition {
-                RegexRep::Exact(n) => {
-                    for _ in 0..n {
-                        //a matches le paso el input que quiero validar
-                        //obtengo el size, cuanto avanzo
-                        let size = state.value.matches(&value[index..]);
-
-                        if size == 0 {
-                            //todo: check if we can backtrack
-                            return Ok(false);
-                        }
-                        //me muevo todo hacia adelante lo que mathcee
-                        index += size;
+            loop {
+                if input_idx >= value.len() {
+                    if state.repetition.is_exact() {
+                        return Ok(false);
+                    } else {
+                        break;
                     }
-                },
-                RegexRep::Any => {
-                    let mut keep_matching = true;
-                    while keep_matching {
-                        //mientras siga matcheando en el caso any
-                        //matcheo el valor, si me devuelve algo me voy adelante
-                        //y vuelvo a matchear
-                        let match_size = state.value.matches(&value[index..]);
-                        if match_size != 0 {
-                            index += match_size;
-                        } else {
-                            keep_matching = false;
-                        }
+                }
+
+                consumed += state.value.matches(&value[input_idx + consumed..]);
+
+                if consumed == 0 {
+                    if state.repetition.is_exact() {
+                        return Ok(false);
+                    } else {
+                        break;
                     }
-                } 
-                // RegexRep::Range { min, max } => todo!(),                
+                }
+
+                input_idx += consumed;
+                consumed = 0;
+
+                if !matches!(state.repetition, RegexRep::Any) {
+                    break;
+                }
             }
+
+            regex_idx += 1;
         }
+
         Ok(true)
     }
+}
 
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_regex_new() {
+        // Test a simple regex
+        let regex = Regex::new("abc").unwrap();
+        assert_eq!(regex.states.len(), 3);
+        assert_eq!(regex.states[0].value, RegexVal::Literal('a'));
+        assert_eq!(regex.states[1].value, RegexVal::Literal('b'));
+        assert_eq!(regex.states[2].value, RegexVal::Literal('c'));
+
+        // Test a regex with wildcard 
+        let regex = Regex::new("a.bc").unwrap();
+        assert_eq!(regex.states.len(), 4);
+        assert_eq!(regex.states[0].value, RegexVal::Literal('a'));
+        assert_eq!(regex.states[1].value, RegexVal::Wildcard);
+        assert_eq!(regex.states[2].value, RegexVal::Literal('b'));
+        assert_eq!(regex.states[3].value, RegexVal::Literal('c')); 
+    }
 }

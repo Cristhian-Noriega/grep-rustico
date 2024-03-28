@@ -1,23 +1,23 @@
-use std::env;
+//use std::env;
 use grep_rustico::regex::Regex;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    //let args: Vec<String> = env::args().collect();
 
-    if args.len() != 3 {
-        eprintln!("Invalid argurments");
-        return;
-    }
+    // if args.len() != 3 {
+    //     eprintln!("Invalid argurments");
+    //     return;
+    // }
 
-    let pattern = &args[1];
+    // let pattern = &args[1];
 
     //let file_name = &args[2];
     
-    let regex = Regex::new(pattern);
+    let regex = Regex::new("cba");
 
-    println!("Your regex is {:?}", regex);
+    println!("Your regex is  {:?}", regex);
 
-    let value = "abaab";
+    let value = "abccba";
     println!("Your value is {:?}", value);
 
     match regex.unwrap().match_expression(value) {
