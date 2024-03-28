@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug,Copy, Clone)]
 pub enum RegexVal {
     Literal(char),
     Wildcard,
@@ -6,21 +6,30 @@ pub enum RegexVal {
 }
 
 impl RegexVal {
-    pub fn matches(&self, value: &str) -> usize {
+    //este metodo me dice cuanto debo avanzar en un matcheo sobre el input
+    pub fn matches(&self, value:&str) -> usize {
         match self {
-            RegexVal::Literal(c) => {
-                if let Some(idx) = value.find(*c) {
-                    return idx + 1;
+            RegexVal::Literal(l) =>{
+                //si el sig char matchea un some que adentro tiene un char que busco
+                if value.chars().next() == Some(*l) {
+                    println!("matcheo {}", l.len_utf8());
+                    l.len_utf8() //cant consumida en el input
+                } else {
+                    0
                 }
-            }
+            },
             RegexVal::Wildcard => {
-                if !value.is_empty() {
-                    return 1;
+                //me quedo con el char porque necesito saber el largo
+                if let Some(c) = value.chars().next() {
+                    c.len_utf8()
+                } else {
+                    0
                 }
-            }
+            },
+            //RegexVal::Class(_) => todo!(),
         }
-        0
-    }
+    } 
+
 
 }
 

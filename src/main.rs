@@ -12,12 +12,12 @@ fn main() {
     // let pattern = &args[1];
 
     //let file_name = &args[2];
-    
-    let regex = Regex::new("cba");
+
+    let regex = Regex::new("abe..");
 
     println!("Your regex is  {:?}", regex);
 
-    let value = "abccba";
+    let value = "abeercafa";
     println!("Your value is {:?}", value);
 
     match regex.unwrap().match_expression(value) {
