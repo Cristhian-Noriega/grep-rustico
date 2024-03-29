@@ -13,7 +13,16 @@ impl Regex {
     //parseo de una regex
     pub fn new(expression: &str) -> Result<Self, &str> {
         let mut states: Vec<RegexState> = vec![];
+
+        //si no tiene ^ al principio le agrego un wildcard
         
+        if !expression.contains('^') {
+            states.push(RegexState {
+                value: RegexVal::Wildcard,
+                repetition: RegexRep::Any,
+            });
+        }
+
         let mut chars_iter = expression.chars();
         while let Some(c) = chars_iter.next(){
             let state: Option<RegexState> = match c {
@@ -49,8 +58,51 @@ impl Regex {
                     }),
 
                     None => return Err("se encontro un error"),
-                }
+                } 
 
+                '?' => {
+                    //el ultimo char le cambio el field repetition
+                    if let Some(last) = states.last_mut() {
+                        last.repetition = RegexRep::Range {
+                            min: Some(0),
+                            max: Some(1),
+                        };
+                    } else {
+                        return Err("se encontro un caracter '?' inesperado")
+                    }
+                    None
+                },
+
+                '+' => {
+                    //el ultimo char le cambio el field repetition
+                    if let Some(last) = states.last_mut() {
+                        last.repetition = RegexRep::Range {
+                            min: Some(1),
+                            max: None,
+                        };
+                    } else {
+                        return Err("se encontro un caracter '+' inesperado")
+                    }
+                    None
+                },
+
+                //Caso ^ dejo a match expresion que funcione normalmente
+                '^' => {
+                    if expression.starts_with('^') {
+                        None
+                    } else {
+                        return Err("'^' is not at the beginning of the expression");
+                    }
+
+                }
+                //TODO  implementar el caso $
+                '$' => {
+                    if expression.ends_with('$') {
+                        None
+                    } else {
+                        return Err("'$' is not at the end of the expression");
+                    }
+                }
                 _ => return Err("Hubo un eror")
             };
 
@@ -123,39 +175,44 @@ impl Regex {
                         }
                     }
                 } 
-                // RegexRep::Range { min, max } => todo!(),      
+                RegexRep::Range { min, max } => {
+                    let mut match_size = 0;
+                    let mut count = 0;
+                    while let Some(m) = max {
+                        if count == m {
+                            break;
+                        }
+                        let s = state.value.matches(&value[index..]);
+                        if s == 0 {
+                            break;
+                        }
+                        match_size += s;
+                        index += s;
+                        count += 1;
+                    }
+                    if let Some(m) = min {
+                        if count < m {
+                            match backtrack(state, &mut stack, &mut queue) {
+                                Some(size) => {
+                                    index -= size;
+                                    continue 'states;
+                                }
+                                None => return Ok(false),
+                            }
+                        }
+                    }
+                    stack.push(EvaluatedStep{
+                        state: state,
+                        match_size: match_size,
+                        backtrackable: false,
+                    });
+                }
                 _ => return Ok(false),        
             }
         }
         Ok(true)
     }
 
-
-    pub fn match_pattern(mut self, value: &str) -> Result<bool, &str> {
-        if self.states.is_empty() {
-            return Ok(false);
-        }
-
-        if let Some(first_state) = self.states.first() {
-            if let RegexVal::Literal('^') = first_state.value {
-                // First element is '^', call match_expression directly
-                return self.match_expression(value);
-            }
-        }
-
-        // Modify the regex struct to add '.' and '*' at the first two positions
-        self.states.insert(0, RegexState {
-            value: RegexVal::Wildcard,
-            repetition: RegexRep::Exact(1),
-        });
-        self.states.insert(1, RegexState {
-            value: RegexVal::Wildcard,
-            repetition: RegexRep::Any,
-        });
-
-        // Call match_expression with the modified regex
-        self.match_expression(value)
-    }
 
 }
 

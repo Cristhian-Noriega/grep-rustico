@@ -13,17 +13,18 @@ fn main() {
 
     //let file_name = &args[2];
 
-    let regex = Regex::new("abe..");
+    let regex = Regex::new("go+gle");
 
     println!("Your regex is  {:?}", regex);
 
-    let value = "abeercafa";
+    let value = "google";
     println!("Your value is {:?}", value);
 
     match regex.unwrap().match_expression(value) {
         Ok(result) => println!("Result: {}", result),
         Err(err) => println!("Error: {}", err),
     }
+    
     
     
 }
