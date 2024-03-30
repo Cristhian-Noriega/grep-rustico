@@ -110,10 +110,26 @@ impl Regex {
                             return Err("'$' is not at the end of the expression");
                         }
                     }
-                    //caso 
-                    '|' => {
-                            None
-                     }
+                    //caso Or |
+                    '|' =>  None,
+                    //caso Brackets []
+                    '[' => {
+                        let mut bracket_expression = Vec::new();
+                        while let Some(c) = chars_iter.next() {
+                            if c == ']' {
+                                break;
+                            }
+                            bracket_expression.push(c);
+                        }
+                        if bracket_expression.is_empty() {
+                            return Err("Empty bracket expression");
+                        }
+                        states.push(RegexState {
+                            value: RegexVal::BracketExpression(bracket_expression),
+                            repetition: RegexRep::Exact(1),
+                        });
+                        None
+                    }
                     _ => return Err("Hubo un eror")
                 };
                 if let Some(s) = state {
@@ -224,6 +240,17 @@ mod tests {
         assert_eq!(Regex::new("a|b").unwrap().match_expression("ba"), Ok(true));
         assert_eq!(Regex::new("cat|dog").unwrap().match_expression("dog"), Ok(true));
     }
+
+    #[test]
+    fn test_match_expression_brackets() {
+        assert_eq!(Regex::new("[a]").unwrap().match_expression("a"), Ok(true));
+        assert_eq!(Regex::new("[a]").unwrap().match_expression("ab"), Ok(true));
+        assert_eq!(Regex::new("[abc]").unwrap().match_expression("c"), Ok(true));
+        assert_eq!(Regex::new("[abc]").unwrap().match_expression("ab"), Ok(true));
+        assert_eq!(Regex::new("v[aeiou]c[aeiou]l").unwrap().match_expression("vocal"), Ok(true));
+        assert_eq!(Regex::new("v[aeiou]c[aeiou]l").unwrap().match_expression("voucal"), Ok(false));
+        assert_eq!(Regex::new("v[aeo]c[iou]l").unwrap().match_expression("vocal"), Ok(false));
+    }   
 }
 
 

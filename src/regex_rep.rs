@@ -7,12 +7,3 @@ pub enum RegexRep {
         max: Option<usize>
     }
 }
-
-impl RegexRep {
-    pub fn is_exact(&self) -> bool {
-        match self {
-            RegexRep::Exact(_) => true,
-            _ => false,
-        }
-    }
-}

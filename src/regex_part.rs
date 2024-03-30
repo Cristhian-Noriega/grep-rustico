@@ -33,9 +33,6 @@ impl RegexPart {
                         println!("El state es {:?} y {:?}", state.value, state.repetition);
                         println!("output de matches {:?}", s);
                         println!("index {:?}", index);
-                        // if s == 0 && index == value.len() {
-                        //     return Ok(false);
-                        // }
                         if s == 0 { //no matcheo
                             match backtrack(state, &mut stack, &mut queue) {
                                 Some(size) => {
@@ -51,8 +48,6 @@ impl RegexPart {
                             index += s;
                         }
                     }
-
-                    
 
                     stack.push(EvaluatedStep{
                         state: state,
@@ -127,11 +122,7 @@ impl RegexPart {
             Ok(true)
         }
     }
-
-
-
 }
-
 
 
 fn backtrack(
@@ -152,5 +143,4 @@ fn backtrack(
         }
     }
     None
-
 }
