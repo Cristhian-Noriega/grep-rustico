@@ -5,123 +5,13 @@ use crate::regex_rep::RegexRep;
 use crate::evaluated_state::EvaluatedStep;
 
 #[derive(Debug)]
-pub struct Regex {
+pub struct RegexPart {
     states: Vec<RegexState>,
     ends_with_dollar: bool,
 }
 
-impl Regex { 
-    //parseo de una regex
-    pub fn new(expression: &str) -> Result<Self, &str> {
-        let mut states: Vec<RegexState> = vec![];
-
-        //si no tiene ^ al principio le agrego un wildcard
-        
-        if !expression.contains('^') {
-            states.push(RegexState {
-                value: RegexVal::Wildcard,
-                repetition: RegexRep::Any,
-            });
-        }
-
-        let mut ends_with_dollar = false;
-
-        let mut chars_iter = expression.chars();
-        while let Some(c) = chars_iter.next(){
-            let state: Option<RegexState> = match c {
-                //Caso wildcard . (matchea cualquier char una vez)
-                '.' => Some(RegexState{ 
-                    value: RegexVal::Wildcard,
-                    repetition: RegexRep::Exact(1)
-                }),
-                //Caso literal
-                'a'..='z' => Some(RegexState{ 
-                    value: RegexVal::Literal(c),
-                    repetition:RegexRep::Exact(1) 
-                }),
-
-                //Caso *  (el char anterior lo puedo mathear cualquier cant de veces)
-                '*' => {
-                    //el ultimo char le cambio el field repetition
-                    if let Some(last) = states.last_mut() {
-                        last.repetition = RegexRep::Any;
-                    } else {
-                        return Err("se encontro un caracter '*' inesperado")
-                    }
-
-                    None
-                        
-                },
-
-                //Caso \ paso al siguiente caracter y lo tomo como literal
-                '\\' => match chars_iter.next(){
-                    Some(literal) => Some(RegexState{ 
-                        value: RegexVal::Literal(literal),
-                        repetition:RegexRep::Exact(1) 
-                    }),
-
-                    None => return Err("se encontro un error"),
-                } 
-
-                '?' => {
-                    //el ultimo char le cambio el field repetition
-                    if let Some(last) = states.last_mut() {
-                        last.repetition = RegexRep::Range {
-                            min: Some(0),
-                            max: Some(1),
-                        };
-                    } else {
-                        return Err("se encontro un caracter '?' inesperado")
-                    }
-                    None
-                },
-
-                '+' => {
-                    //el ultimo char le cambio el field repetition
-                    if let Some(last) = states.last_mut() {
-                        last.repetition = RegexRep::Range {
-                            min: Some(1),
-                            max: None,
-                        };
-                    } else {
-                        return Err("se encontro un caracter '+' inesperado")
-                    }
-                    None
-                },
-
-                //Caso ^ dejo a match expresion que funcione normalmente
-                '^' => {
-                    if expression.starts_with('^') {
-                        None
-                    } else {
-                        return Err("'^' is not at the beginning of the expression");
-                    }
-
-                }
-                //TODO  implementar el caso $
-                '$' => {
-                    if chars_iter.next().is_none() {
-                        ends_with_dollar = true;
-                        break;
-                    } else {
-                        return Err("'$' is not at the end of the expression");
-                    }
-                }
-                _ => return Err("Hubo un eror")
-            };
-
-            //con los states que voy coleccionando los agrego al vector de states
-            //solo  si es un Some, ya que puede que no lo quiera agregar como *
-            if let Some(s) = state {
-                states.push(s);
-            }
-
-        }
-        Ok(Regex{states, ends_with_dollar})
-    }
-
-
-    pub fn match_expression(self, value: &str) -> Result<bool, &str> {
+impl RegexPart {
+    pub fn match_sigle_expression(self, value: &str) -> Result<bool, &str> {
         if !value.is_ascii() {
             return Err("el input no es ascii");
         }
@@ -129,7 +19,7 @@ impl Regex {
         let mut queue = VecDeque::from(self.states);
         let mut stack = Vec::new();
         let mut index = 0;
-        let mut ends_with_dollar = self.ends_with_dollar;
+        let  ends_with_dollar = self.ends_with_dollar;
        
 
         'states: while let Some(state) = queue.pop_front() {
@@ -240,6 +130,147 @@ impl Regex {
     }
 
 
+
+}
+
+
+#[derive(Debug)]
+pub struct Regex {
+    parts: Vec<RegexPart>
+}
+
+impl Regex { 
+    //parseo de una regex
+    pub fn new(expression: &str) -> Result<Self, &str> {
+        //let mut states: Vec<RegexState> = vec![];
+        let mut ends_with_dollar = false;
+        let mut parts: Vec<RegexPart> = vec![];
+
+        //si no tiene ^ al principio le agrego un wildcard
+        let expressions: Vec<&str> = expression.split('|').collect();
+
+        
+        for expr in expressions {
+            let mut states: Vec<RegexState> = vec![];
+
+            if !expression.contains('^') {
+                states.push(RegexState {
+                    value: RegexVal::Wildcard,
+                    repetition: RegexRep::Any,
+                });
+            }
+
+            let mut chars_iter = expr.chars();
+            while let Some(c) = chars_iter.next(){
+                let state: Option<RegexState> = match c {
+                    //Caso wildcard . (matchea cualquier char una vez)
+                    '.' => Some(RegexState{ 
+                        value: RegexVal::Wildcard,
+                        repetition: RegexRep::Exact(1)
+                    }),
+                    //Caso literal
+                    'a'..='z' => Some(RegexState{ 
+                        value: RegexVal::Literal(c),
+                        repetition:RegexRep::Exact(1) 
+                    }),
+
+                    //Caso *  (el char anterior lo puedo mathear cualquier cant de veces)
+                    '*' => {
+                        //el ultimo char le cambio el field repetition
+                        if let Some(last) = states.last_mut() {
+                            last.repetition = RegexRep::Any;
+                        } else {
+                            return Err("se encontro un caracter '*' inesperado")
+                        }
+
+                        None
+                            
+                    },
+
+                    //Caso \ paso al siguiente caracter y lo tomo como literal
+                    '\\' => match chars_iter.next(){
+                        Some(literal) => Some(RegexState{ 
+                            value: RegexVal::Literal(literal),
+                            repetition:RegexRep::Exact(1) 
+                        }),
+
+                        None => return Err("se encontro un error"),
+                    } 
+
+                    '?' => {
+                        //el ultimo char le cambio el field repetition
+                        if let Some(last) = states.last_mut() {
+                            last.repetition = RegexRep::Range {
+                                min: Some(0),
+                                max: Some(1),
+                            };
+                        } else {
+                            return Err("se encontro un caracter '?' inesperado")
+                        }
+                        None
+                    },
+
+                    '+' => {
+                        //el ultimo char le cambio el field repetition
+                        if let Some(last) = states.last_mut() {
+                            last.repetition = RegexRep::Range {
+                                min: Some(1),
+                                max: None,
+                            };
+                        } else {
+                            return Err("se encontro un caracter '+' inesperado")
+                        }
+                        None
+                    },
+
+                    //Caso ^ dejo a match expresion que funcione normalmente
+                    '^' => {
+                        if expression.starts_with('^') {
+                            None
+                        } else {
+                            return Err("'^' is not at the beginning of the expression");
+                        }
+
+                    }
+                    //caso $ ends_with_dollar
+                    '$' => {
+                        if chars_iter.next().is_none() {
+                            ends_with_dollar = true;
+                            break;
+                        } else {
+                            return Err("'$' is not at the end of the expression");
+                        }
+                    }
+                    //caso 
+                    '|' => {
+                            None
+                     }
+                    _ => return Err("Hubo un eror")
+                };
+                if let Some(s) = state {
+                        states.push(s);
+                    }
+                ends_with_dollar = false;   
+            }
+            parts.push(RegexPart{states, ends_with_dollar});
+        }
+        Ok(Regex{parts})
+    }
+
+
+    pub fn match_expression(self, value: &str) -> Result<bool, &str> {
+        if !value.is_ascii() {
+            return Err("el input no es ascii");
+        }
+
+        for part in self.parts {
+            if part.match_sigle_expression(value)? {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
 }
 
 
@@ -254,10 +285,7 @@ fn backtrack(
 
     while let Some(e) = evaluated.pop() {
         backtrack_size += e.match_size;
-        // println!("evaluated {:?}", e.state.value);
-        // println!("es backtrakable?: {:?}", e.backtrackable);
         if e.backtrackable {
-            // println!("Backtracking {:?}", backtrack_size);
             return Some(backtrack_size);
         } else {
             next.push_front(e.state);
@@ -339,6 +367,16 @@ mod tests {
         assert_eq!(Regex::new("ab$").unwrap().match_expression("ab"), Ok(true));
         assert_eq!(Regex::new("a$").unwrap().match_expression("abb"), Ok(false));
         assert_eq!(Regex::new("og$").unwrap().match_expression("dog"), Ok(true));
+    }
+
+    #[test]
+    fn test_match_expression_or() {
+        assert_eq!(Regex::new("a|b").unwrap().match_expression("a"), Ok(true));
+        assert_eq!(Regex::new("a|b").unwrap().match_expression("b"), Ok(true));
+        assert_eq!(Regex::new("a|b").unwrap().match_expression("c"), Ok(false));
+        assert_eq!(Regex::new("a|b").unwrap().match_expression("ab"), Ok(true));
+        assert_eq!(Regex::new("a|b").unwrap().match_expression("ba"), Ok(true));
+        assert_eq!(Regex::new("cat|dog").unwrap().match_expression("dog"), Ok(true));
     }
 }
 
