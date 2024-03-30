@@ -2,6 +2,7 @@
 pub enum RegexVal {
     Literal(char),
     Wildcard,
+    
     //Class(RegexClass),
 }
 
@@ -26,19 +27,18 @@ impl RegexVal {
                     0
                 }
             },
-            //RegexVal::Class(_) => todo!(),
-        }
-    } 
-
-
-}
-
-impl PartialEq for RegexVal {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (RegexVal::Literal(c1), RegexVal::Literal(c2)) => c1 == c2,
-            (RegexVal::Wildcard, RegexVal::Wildcard) => true,
-            _ => false,
+            
         }
     }
-}
+
+    // pub fn is_end_of_line(&self) -> bool {
+    //     match self {
+    //         RegexVal::EndOfLine => true,
+    //         _ => false,
+    //     }
+    // }
+} 
+
+
+
+

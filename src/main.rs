@@ -13,11 +13,11 @@ fn main() {
 
     //let file_name = &args[2];
 
-    let regex = Regex::new("go+gle");
+    let regex = Regex::new("^gato");
 
     println!("Your regex is  {:?}", regex);
 
-    let value = "google";
+    let value = "gatodog";
     println!("Your value is {:?}", value);
 
     match regex.unwrap().match_expression(value) {

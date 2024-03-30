@@ -6,7 +6,8 @@ use crate::evaluated_state::EvaluatedStep;
 
 #[derive(Debug)]
 pub struct Regex {
-    states: Vec<RegexState>
+    states: Vec<RegexState>,
+    ends_with_dollar: bool,
 }
 
 impl Regex { 
@@ -22,6 +23,8 @@ impl Regex {
                 repetition: RegexRep::Any,
             });
         }
+
+        let mut ends_with_dollar = false;
 
         let mut chars_iter = expression.chars();
         while let Some(c) = chars_iter.next(){
@@ -97,8 +100,9 @@ impl Regex {
                 }
                 //TODO  implementar el caso $
                 '$' => {
-                    if expression.ends_with('$') {
-                        None
+                    if chars_iter.next().is_none() {
+                        ends_with_dollar = true;
+                        break;
                     } else {
                         return Err("'$' is not at the end of the expression");
                     }
@@ -113,7 +117,7 @@ impl Regex {
             }
 
         }
-        Ok(Regex{states})
+        Ok(Regex{states, ends_with_dollar})
     }
 
 
@@ -125,35 +129,45 @@ impl Regex {
         let mut queue = VecDeque::from(self.states);
         let mut stack = Vec::new();
         let mut index = 0;
+        let mut ends_with_dollar = self.ends_with_dollar;
+       
 
         'states: while let Some(state) = queue.pop_front() {
             match state.repetition {
                 RegexRep::Exact(n) => {
                     let mut match_size = 0;
                     for _ in 0..n {
+
                         let s = state.value.matches(&value[index..]);
-                        
-                        if s == 0 {
+
+
+                        println!("El state es {:?} y {:?}", state.value, state.repetition);
+                        println!("output de matches {:?}", s);
+                        println!("index {:?}", index);
+                        // if s == 0 && index == value.len() {
+                        //     return Ok(false);
+                        // }
+                        if s == 0 { //no matcheo
                             match backtrack(state, &mut stack, &mut queue) {
                                 Some(size) => {
-                                    println!("entre aca y reste a index");
-                                    println!("index es: {:?}", index);
-                                    println!("size es: {:?}", size);
-                                    index -= 1;
-                                    println!("index ahora es: {:?}", index);
+                                    index -= size;
                                     continue 'states;
                                 }
                                 None => return Ok(false),
                             }
                             
-                        } else {
+                        } else { //matcheo
+                            println!("ENTRO ACA");
                             match_size += s;
                             index += s;
                         }
                     }
+
+                    
+
                     stack.push(EvaluatedStep{
                         state: state,
-                        match_size: index,
+                        match_size,
                         backtrackable: false,
                     })
                 },
@@ -167,10 +181,11 @@ impl Regex {
                             println!("entre a any y el index es {:?}", index);
                             stack.push(EvaluatedStep{
                                 state: state.clone(),
-                                match_size: index,
+                                match_size,
                                 backtrackable: true,
                             });
                         } else {
+                            println!("state {:?}", state.value);
                             keep_matching = false;
                         }
                     }
@@ -178,10 +193,7 @@ impl Regex {
                 RegexRep::Range { min, max } => {
                     let mut match_size = 0;
                     let mut count = 0;
-                    while let Some(m) = max {
-                        if count == m {
-                            break;
-                        }
+                    loop {
                         let s = state.value.matches(&value[index..]);
                         if s == 0 {
                             break;
@@ -189,6 +201,11 @@ impl Regex {
                         match_size += s;
                         index += s;
                         count += 1;
+                        if let Some(m) = max {
+                            if count == m {
+                                break;
+                            }
+                        }
                     }
                     if let Some(m) = min {
                         if count < m {
@@ -205,12 +222,21 @@ impl Regex {
                         state: state,
                         match_size: match_size,
                         backtrackable: false,
-                    });
+                    })
                 }
                 _ => return Ok(false),        
             }
+        }   
+
+        if ends_with_dollar {
+            if index == value.len() {
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        } else {
+            Ok(true)
         }
-        Ok(true)
     }
 
 
@@ -228,8 +254,10 @@ fn backtrack(
 
     while let Some(e) = evaluated.pop() {
         backtrack_size += e.match_size;
+        // println!("evaluated {:?}", e.state.value);
+        // println!("es backtrakable?: {:?}", e.backtrackable);
         if e.backtrackable {
-            println!("Backtracking {:?}", backtrack_size);
+            // println!("Backtracking {:?}", backtrack_size);
             return Some(backtrack_size);
         } else {
             next.push_front(e.state);
@@ -240,5 +268,78 @@ fn backtrack(
 }
 
 
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_match_expression_question_mark() {
+        assert_eq!(Regex::new("a?b").unwrap().match_expression("b"), Ok(true));
+        assert_eq!(Regex::new("a?b").unwrap().match_expression("ab"), Ok(true));
+        assert_eq!(Regex::new("a?b").unwrap().match_expression("aab"), Ok(true));
+        assert_eq!(Regex::new("a?b").unwrap().match_expression("aa"), Ok(false));
+    }
+
+    #[test]
+    fn test_match_expression_wildcard() {
+        assert_eq!(Regex::new("a.b").unwrap().match_expression("aab"), Ok(true));
+        assert_eq!(Regex::new("a.b").unwrap().match_expression("axb"), Ok(true));
+        assert_eq!(Regex::new("a.b").unwrap().match_expression("abc"), Ok(false));
+    }
+
+    #[test]
+    fn test_match_expression_wildcard_any() {
+        assert_eq!(Regex::new("a.*").unwrap().match_expression("abc"), Ok(true));
+        assert_eq!(Regex::new("a.*").unwrap().match_expression("a"), Ok(true));
+        assert_eq!(Regex::new("ab.*c").unwrap().match_expression("abzzzc"), Ok(true));
+        assert_eq!(Regex::new("ab.*cd").unwrap().match_expression("abzzzcd"), Ok(true));
+    }
+
+    #[test]
+    fn test_match_expression_literals() {
+        assert_eq!(Regex::new("abc").unwrap().match_expression("abc"), Ok(true));
+        assert_eq!(Regex::new("abc").unwrap().match_expression("ab"), Ok(false));
+        assert_eq!(Regex::new("abc").unwrap().match_expression("abcd"), Ok(true));
+        assert_eq!(Regex::new("bc").unwrap().match_expression("abcd"), Ok(true));
+    }
+
+    #[test]
+    fn test_match_expression_star() {
+        assert_eq!(Regex::new("a*b").unwrap().match_expression("b"), Ok(true));
+        assert_eq!(Regex::new("a*b").unwrap().match_expression("ab"), Ok(true));
+        assert_eq!(Regex::new("a*b").unwrap().match_expression("aaab"), Ok(true));
+        assert_eq!(Regex::new("a*b").unwrap().match_expression("aa"), Ok(false));
+    }
+
+    #[test]
+    fn test_match_expression_plus() {
+        assert_eq!(Regex::new("a+b").unwrap().match_expression("ab"), Ok(true));
+        assert_eq!(Regex::new("a+b").unwrap().match_expression("aab"), Ok(true));
+        assert_eq!(Regex::new("a+b").unwrap().match_expression("aa"), Ok(false));
+        assert_eq!(Regex::new("go+gle").unwrap().match_expression("gogle"), Ok(true));
+        assert_eq!(Regex::new("go+gle").unwrap().match_expression("gooogle"), Ok(true));
+        assert_eq!(Regex::new("go+gle").unwrap().match_expression("ggle"), Ok(false));
+    }
+
+    #[test]
+    fn test_match_expression_caret() {
+        assert_eq!(Regex::new("^a").unwrap().match_expression("a"), Ok(true));
+        assert_eq!(Regex::new("^a").unwrap().match_expression("ba"), Ok(false));
+        assert_eq!(Regex::new("^a").unwrap().match_expression("ab"), Ok(true));
+        assert_eq!(Regex::new("^ab").unwrap().match_expression("ba"), Ok(false));
+    }
+
+    #[test]
+    fn test_match_expression_end_of_line() {
+        assert_eq!(Regex::new("a$").unwrap().match_expression("a"), Ok(true));
+        assert_eq!(Regex::new("a$").unwrap().match_expression("ba"), Ok(true));
+        assert_eq!(Regex::new("a$").unwrap().match_expression("wwwa"), Ok(true));
+        assert_eq!(Regex::new("ab$").unwrap().match_expression("ba"), Ok(false));
+        assert_eq!(Regex::new("ab$").unwrap().match_expression("ab"), Ok(true));
+        assert_eq!(Regex::new("a$").unwrap().match_expression("abb"), Ok(false));
+        assert_eq!(Regex::new("og$").unwrap().match_expression("dog"), Ok(true));
+    }
+}
 
 
