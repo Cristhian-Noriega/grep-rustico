@@ -13,11 +13,11 @@ fn main() {
 
     //let file_name = &args[2];
 
-    let regex = Regex::new("v[aeiou]cal");
+    let regex = Regex::new("mo[^aeiou]tadela");
 
     println!("Your regex is  {:?}", regex);
 
-    let value = "vrcal";
+    let value = "mortadela";
     println!("Your value is {:?}", value);
 
     match regex.unwrap().match_expression(value) {

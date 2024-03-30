@@ -1,8 +1,13 @@
+//use crate::bracket_expression::BracketExpression;
+
 #[derive(Debug, Clone)]
 pub enum RegexVal {
     Literal(char),
     Wildcard,
-    BracketExpression(Vec<char>)
+    BracketExpression{
+        chars: Vec<char>, 
+        is_negated: bool
+    }
     //Class(RegexClass),
 }
 
@@ -24,21 +29,18 @@ impl RegexVal {
                     0
                 }
             },
-            RegexVal::BracketExpression(chars) => {
-                if let Some(c) = value.chars().next() {
-                    if chars.contains(&c) {
-                        c.len_utf8()
-                    } else {
-                        0
-                    }
+            RegexVal::BracketExpression { chars, is_negated } => {
+                let next_char = value.chars().next();
+                let matches = next_char.map_or(false, |c| chars.contains(&c));
+                if matches == *is_negated {
+                    return 0;
                 } else {
-                    0
+                    return next_char.map_or(0, |c| c.len_utf8());
                 }
             }
         }
     }
 }
-
 
 
 

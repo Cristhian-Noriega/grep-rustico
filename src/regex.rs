@@ -2,6 +2,7 @@ use crate::regex_part::RegexPart;
 use crate::regex_state::RegexState;
 use crate::regex_value::RegexVal;
 use crate::regex_rep::RegexRep;
+//use crate::bracket_expression::BracketExpression;
 
 #[derive(Debug)]
 pub struct Regex {
@@ -115,7 +116,12 @@ impl Regex {
                     //caso Brackets []
                     '[' => {
                         let mut bracket_expression = Vec::new();
+                        let mut is_negated = false;
                         while let Some(c) = chars_iter.next() {
+                            if c == '^' {
+                                is_negated = true;
+                                continue;
+                            }
                             if c == ']' {
                                 break;
                             }
@@ -124,11 +130,13 @@ impl Regex {
                         if bracket_expression.is_empty() {
                             return Err("Empty bracket expression");
                         }
-                        states.push(RegexState {
-                            value: RegexVal::BracketExpression(bracket_expression),
-                            repetition: RegexRep::Exact(1),
-                        });
-                        None
+                        Some( RegexState {
+                                value: RegexVal::BracketExpression{
+                                    chars: bracket_expression,
+                                    is_negated,
+                                },
+                                repetition: RegexRep::Exact(1),
+                            })
                     }
                     _ => return Err("Hubo un eror")
                 };
@@ -251,6 +259,15 @@ mod tests {
         assert_eq!(Regex::new("v[aeiou]c[aeiou]l").unwrap().match_expression("voucal"), Ok(false));
         assert_eq!(Regex::new("v[aeo]c[iou]l").unwrap().match_expression("vocal"), Ok(false));
     }   
+
+    #[test]
+    fn test_match_expression_negated_brackets() {
+        assert_eq!(Regex::new("mo[^aeiou]tadela").unwrap().match_expression("mortadela"), Ok(true));
+        assert_eq!(Regex::new("mo[^aeiou]tadela").unwrap().match_expression("mootadela"), Ok(false));
+        assert_eq!(Regex::new("a[^abc]bc").unwrap().match_expression("abc"), Ok(false));
+        assert_eq!(Regex::new("a[^abc]bc").unwrap().match_expression("aebc"), Ok(true));
+        assert_eq!(Regex::new("a[^abc]bc").unwrap().match_expression("aabc"), Ok(false));
+    }
 }
 
 
