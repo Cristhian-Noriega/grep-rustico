@@ -2,7 +2,6 @@ use crate::regex_part::RegexPart;
 use crate::regex_state::RegexState;
 use crate::regex_value::RegexVal;
 use crate::regex_rep::RegexRep;
-//use crate::bracket_expression::BracketExpression;
 
 #[derive(Debug)]
 pub struct Regex {
@@ -10,7 +9,6 @@ pub struct Regex {
 }
 
 impl Regex { 
-    //parseo de una regex
     pub fn new(expression: &str) -> Result<Self, &str> {
         //let mut states: Vec<RegexState> = vec![];
         let mut ends_with_dollar = false;
@@ -267,6 +265,24 @@ mod tests {
         assert_eq!(Regex::new("a[^abc]bc").unwrap().match_expression("abc"), Ok(false));
         assert_eq!(Regex::new("a[^abc]bc").unwrap().match_expression("aebc"), Ok(true));
         assert_eq!(Regex::new("a[^abc]bc").unwrap().match_expression("aabc"), Ok(false));
+    }
+
+    #[test]
+    fn test_match_expression_alternance_precedence() {
+        assert_eq!(Regex::new("abc|de+f").unwrap().match_expression("abc"), Ok(true));
+        assert_eq!(Regex::new("abc|de+f").unwrap().match_expression("def"), Ok(true));
+        assert_eq!(Regex::new("abc|de+f").unwrap().match_expression("deef"), Ok(true));
+        assert_eq!(Regex::new("abc|de+f").unwrap().match_expression("df"), Ok(false));
+        assert_eq!(Regex::new("abc|de+f").unwrap().match_expression("cde"), Ok(false));
+    }
+    
+    #[test]
+    fn test_match_expression_multiples_wildcard_any() {
+        assert_eq!(Regex::new("ab.*c.*f").unwrap().match_expression("abzzzczzzf"), Ok(true));
+        assert_eq!(Regex::new("ab.*c.*f").unwrap().match_expression("abzzzcf"), Ok(true));
+        assert_eq!(Regex::new("ab.*c.*f").unwrap().match_expression("abcf"), Ok(true));
+        assert_eq!(Regex::new("ab.*c.*f").unwrap().match_expression("abzcfe"), Ok(true));
+        assert_eq!(Regex::new("ab.*c.*f").unwrap().match_expression("abzczzz"), Ok(false));
     }
 }
 

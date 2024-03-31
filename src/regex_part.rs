@@ -28,11 +28,6 @@ impl RegexPart {
                     for _ in 0..n {
 
                         let s = state.value.matches(&value[index..]);
-
-
-                        println!("El state es {:?} y {:?}", state.value, state.repetition);
-                        println!("output de matches {:?}", s);
-                        println!("index {:?}", index);
                         if s == 0 { //no matcheo
                             match backtrack(state, &mut stack, &mut queue) {
                                 Some(size) => {
@@ -43,7 +38,7 @@ impl RegexPart {
                             }
                             
                         } else { //matcheo
-                            println!("ENTRO ACA");
+                            //println!("ENTRO ACA");
                             match_size += s;
                             index += s;
                         }
@@ -62,14 +57,14 @@ impl RegexPart {
                         if match_size != 0 {
                             //println!("entro a any y el match size {:?}", match_size);
                             index += match_size;
-                            println!("entre a any y el index es {:?}", index);
+                            //println!("entre a any y el index es {:?}", index);
                             stack.push(EvaluatedStep{
                                 state: state.clone(),
                                 match_size,
                                 backtrackable: true,
                             });
                         } else {
-                            println!("state {:?}", state.value);
+                            //println!("state {:?}", state.value);
                             keep_matching = false;
                         }
                     }

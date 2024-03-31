@@ -1,9 +1,7 @@
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::path::Path;
-use std::str::Chars;
-
-
+use crate::regex::Regex;
 
 pub struct FileHandler {
     file: File
@@ -16,43 +14,36 @@ impl FileHandler {
         Ok(FileHandler { file })
     }
 
-    pub fn process_file(&self, search_word: &str) -> io::Result<()> {
+    pub fn process_file(&self, expression: &str) {
         let reader = BufReader::new(&self.file);
         for line in reader.lines() {
-            let line = line?;
+            let line = line;
+            let line = line.unwrap_or_default();
             let words: Vec<&str> = line.split_whitespace().collect();
             for word in words {
-                if matches_pattern(word, search_word) {
-                    println!("{}", word);
+                let regex = Regex::new(expression);
+                match regex {
+                    Ok(regex) => {
+                        match regex.match_expression(word) {
+                            Ok(result) => {
+                                if result {
+                                    println!("\x1b[31m{}\x1b[0m hola", word);
+                                }
+                            }
+                            Err(err) => {
+                                eprintln!("Error matching expression: {}", err);
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        eprintln!("Error creating regex: {}", err);
+                    }
                 }
-            }
-        }
-        Ok(())
-    }
-
-}
-
-
-
-pub fn matches_pattern(word: &str, pattern: &str) -> bool {
-    let mut word_chars = word.chars();
-    let mut pattern_chars = pattern.chars();
-
-    while let (Some(word_char), Some(pattern_char)) = (word_chars.next(), pattern_chars.next()) {
-        match pattern_char {
-            '.' => {
-                // If the pattern character is '.', it matches any character, so continue to the next characters
-            },
-            _ => {
-                // If the pattern character is not '.', it should match exactly with the corresponding character in the word
-                if word_char != pattern_char {
-                    return false;
-                }
-            }
         }
     }
 
-    // Check if both iterators have reached the end
-    word_chars.next().is_none() && pattern_chars.next().is_none()
+    }
 }
+
+
 

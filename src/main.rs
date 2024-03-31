@@ -1,30 +1,26 @@
-//use std::env;
+use std::env;
 use grep_rustico::regex::Regex;
+use grep_rustico::file_handler::FileHandler;
 
 fn main() {
-    //let args: Vec<String> = env::args().collect();
+    let args: Vec<String> = env::args().collect();
 
-    // if args.len() != 3 {
-    //     eprintln!("Invalid argurments");
-    //     return;
-    // }
-
-    // let pattern = &args[1];
-
-    //let file_name = &args[2];
-
-    let regex = Regex::new("mo[^aeiou]tadela");
-
-    println!("Your regex is  {:?}", regex);
-
-    let value = "mortadela";
-    println!("Your value is {:?}", value);
-
-    match regex.unwrap().match_expression(value) {
-        Ok(result) => println!("Result: {}", result),
-        Err(err) => println!("Error: {}", err),
+    if args.len() != 3 {
+        eprintln!("Invalid argurments");
+        return;
     }
-    
-    
 
+    let expression = &args[1];
+
+    let file_name = &args[2];
+
+    let file_handler = match FileHandler::new(file_name) {
+        Ok(handler) => handler,
+        Err(err) => {
+            eprintln!("Error creating file handler: {}", err);
+            return;
+        }
+    };
+
+    file_handler.process_file(&expression) 
 }

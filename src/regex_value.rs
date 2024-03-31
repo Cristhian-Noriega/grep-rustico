@@ -16,7 +16,7 @@ impl RegexVal {
         match self {
             RegexVal::Literal(l) => {
                 if value.chars().next() == Some(*l) {
-                    println!("matcheo {}", l.len_utf8());
+                    //println!("matcheo {}", l.len_utf8());
                     l.len_utf8()
                 } else {
                     0
