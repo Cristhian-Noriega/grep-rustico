@@ -28,11 +28,6 @@ impl RegexPart {
                     for _ in 0..n {
 
                         let s = state.value.matches(&value[index..]);
-
-
-                        // println!("El state es {:?} y {:?}", state.value, state.repetition);
-                        // println!("output de matches {:?}", s);
-                        // println!("index {:?}", index);
                         if s == 0 { //no matcheo
                             match backtrack(state, &mut stack, &mut queue) {
                                 Some(size) => {

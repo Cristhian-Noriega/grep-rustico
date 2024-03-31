@@ -27,7 +27,7 @@ impl FileHandler {
                         match regex.match_expression(word) {
                             Ok(result) => {
                                 if result {
-                                    println!("Match: {}", word);
+                                    println!("\x1b[31m{}\x1b[0m hola", word);
                                 }
                             }
                             Err(err) => {
