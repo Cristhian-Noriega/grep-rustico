@@ -136,6 +136,51 @@ impl Regex {
                                 repetition: RegexRep::Exact(1),
                             })
                     }
+
+                    '{' => {
+                        let mut min = None;
+                        let mut max = None;
+                        let mut parameters = Vec::new();
+                        
+                        while let Some(c) = chars_iter.next() {
+                           match c {
+                            '}' => break,
+                            ',' => {
+                                let param_str: String = parameters.iter().collect();
+                                if parameters.is_empty() {
+                                    continue;
+                                }
+                                min = match param_str.parse() {
+                                    Ok(parsed) => Some(parsed),
+                                    Err(_) => return Err("Hubo un error"),
+                                };
+                                parameters.clear();
+                            }
+                            _ if c.is_ascii_digit() => parameters.push(c),
+                            _ => return Err("Hubo un error"),
+                           }
+                        }
+
+                        let param_str: String = parameters.iter().collect();
+                        if !parameters.is_empty() {
+                            max = match param_str.parse() {
+                                Ok(parsed) => Some(parsed),
+                                Err(_) => return Err("Hubo un error"),
+                            }
+                        };
+    
+                        if let Some(last) = states.last_mut() {
+                            last.repetition = RegexRep::Range {
+                                min: min,
+                                max: max,
+                            };
+                        } else {
+                            return Err("se encontro un caracter '+' inesperado")
+                        }
+                        None
+                    }
+                    
+                    
                     _ => return Err("Hubo un eror")
                 };
                 if let Some(s) = state {
@@ -163,7 +208,6 @@ impl Regex {
     }
 
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -283,6 +327,16 @@ mod tests {
         assert_eq!(Regex::new("ab.*c.*f").unwrap().match_expression("abcf"), Ok(true));
         assert_eq!(Regex::new("ab.*c.*f").unwrap().match_expression("abzcfe"), Ok(true));
         assert_eq!(Regex::new("ab.*c.*f").unwrap().match_expression("abzczzz"), Ok(false));
+    }
+
+    #[test]
+    fn test_match_expression_range() {
+        assert_eq!(Regex::new("a{2}").unwrap().match_expression("aa"), Ok(true));
+        assert_eq!(Regex::new("ab{2,4}cd").unwrap().match_expression("aabbcd"), Ok(true));
+        assert_eq!(Regex::new("ab{2,4}cd").unwrap().match_expression("aabbbcd"), Ok(true));
+        assert_eq!(Regex::new("ab{2,4}cd").unwrap().match_expression("abbbbcd"), Ok(true));
+        assert_eq!(Regex::new("ab{2,4}cd").unwrap().match_expression("abcd"), Ok(false));
+        assert_eq!(Regex::new("ab{2,4}cd").unwrap().match_expression("abbbbbbcd"), Ok(false));
     }
 }
 
