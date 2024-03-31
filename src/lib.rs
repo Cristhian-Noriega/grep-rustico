@@ -1,4 +1,5 @@
 pub mod regex;
+pub mod file_handler;
 pub mod regex_part;
 pub mod regex_state;
 pub mod regex_value;
