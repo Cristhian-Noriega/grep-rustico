@@ -1,5 +1,4 @@
 use std::vec;
-
 use crate::regex_part::RegexPart;
 use crate::regex_state::RegexState;
 use crate::regex_value::RegexVal;
@@ -31,12 +30,12 @@ impl Regex {
             let mut chars_iter = expr.chars();
             while let Some(c) = chars_iter.next(){
                 let state: Option<RegexState> = match c {
-                    //Caso wildcard . (matchea cualquier char una vez)
+
                     '.' => Some(RegexState{ 
                         value: RegexVal::Wildcard,
                         repetition: RegexRep::Exact(1)
                     }),
-                    //Caso literal
+
                     'a'..='z' => Some(RegexState{ 
                         value: RegexVal::Literal(c),
                         repetition:RegexRep::Exact(1) 
@@ -57,11 +56,9 @@ impl Regex {
                             value: RegexVal::Literal(' '),
                             repetition: RegexRep::Exact(1),
                         })
-                    }
+                    },
 
-                    //Caso *  (el char anterior lo puedo mathear cualquier cant de veces)
                     '*' => {
-                        //el ultimo char le cambio el field repetition
                         if let Some(last) = states.last_mut() {
                             last.repetition = RegexRep::Any;
                         } else {
@@ -72,18 +69,15 @@ impl Regex {
                             
                     },
 
-                    //Caso \ paso al siguiente caracter y lo tomo como literal
                     '\\' => match chars_iter.next(){
                         Some(literal) => Some(RegexState{ 
                             value: RegexVal::Literal(literal),
                             repetition:RegexRep::Exact(1) 
                         }),
-
                         None => return Err("se encontro un error"),
-                    } 
+                    },
 
                     '?' => {
-                        //el ultimo char le cambio el field repetition
                         if let Some(last) = states.last_mut() {
                             last.repetition = RegexRep::Range {
                                 min: Some(0),
@@ -96,7 +90,6 @@ impl Regex {
                     },
 
                     '+' => {
-                        //el ultimo char le cambio el field repetition
                         if let Some(last) = states.last_mut() {
                             last.repetition = RegexRep::Range {
                                 min: Some(1),
@@ -108,7 +101,6 @@ impl Regex {
                         None
                     },
 
-                    //Caso ^ dejo a match expresion que funcione normalmente
                     '^' => {
                         if expression.starts_with('^') {
                             None
@@ -116,8 +108,8 @@ impl Regex {
                             return Err("'^' is not at the beginning of the expression");
                         }
 
-                    }
-                    //caso $ ends_with_dollar
+                    },
+
                     '$' => {
                         if chars_iter.next().is_none() {
                             ends_with_dollar = true;
@@ -126,9 +118,9 @@ impl Regex {
                             return Err("'$' is not at the end of the expression");
                         }
                     }
-                    //caso Or |
+
                     '|' =>  None,
-                    //caso Brackets []
+
                     '[' => { 
                         if let Some(next_char) = chars_iter.next() {
                             let state = if next_char == '[' {
@@ -145,45 +137,16 @@ impl Regex {
                     }
 
                     '{' => {
-                        let mut min = None;
-                        let mut max = None;
-                        let mut parameters = Vec::new();
-                        
-
-                        while let Some(c) = chars_iter.next() {
-                            match c {
-                                '}' => break,
-                                ',' => {
-                                    if !parameters.is_empty() {
-                                        min = parameters.iter().collect::<String>().parse().ok();
-                                        parameters.clear();
-                                    }
-                                }
-                                _ if c.is_ascii_digit() => parameters.push(c),
-                                _ => return Err("Invalid character in repetition range"),
-                            }
-                        }
-
-                        if !parameters.is_empty() {
-                            max = parameters.iter().collect::<String>().parse().ok();
-                        }
-
+                        let repetition = parse_range_repetition(&mut chars_iter)?;
                         if let Some(last) = states.last_mut() {
-                            last.repetition = RegexRep::Range {
-                                min,
-                                max,
-                            };
+                            last.repetition = repetition;
                         } else {
                             return Err("Repetition range without preceding state");
                         }
-
                         None
-                    }
-
-                    
+                    }   
                     
                     _ => {
-                        println!("el char es {}", c);
                         return Err("Hubo un eror")}
                 };
                 if let Some(s) = state {
@@ -195,7 +158,6 @@ impl Regex {
         }
         Ok(Regex{parts})
     }
-
 
     pub fn match_expression(self, value: &str) -> Result<bool, &str> {
         if !value.is_ascii() {
@@ -259,6 +221,32 @@ fn parse_character_class(chars_iter: &mut std::str::Chars<'_>) -> Option<RegexSt
     } else {
         None 
     }
+}
+
+fn parse_range_repetition(chars_iter: &mut std::str::Chars<'_>) -> Result<RegexRep, &'static str> {
+    let mut min = None;
+    let mut max = None;
+    let mut parameters = Vec::new();
+
+    while let Some(c) = chars_iter.next() {
+        match c {
+            '}' => break,
+            ',' => {
+                if !parameters.is_empty() {
+                    min = parameters.iter().collect::<String>().parse().ok();
+                    parameters.clear();
+                }
+            }
+            _ if c.is_ascii_digit() => parameters.push(c),
+            _ => return Err("Invalid character in repetition range"),
+        }
+    }
+
+    if !parameters.is_empty() {
+        max = parameters.iter().collect::<String>().parse().ok();
+    }
+
+    Ok(RegexRep::Range { min, max })
 }
 
 

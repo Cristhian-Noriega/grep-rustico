@@ -20,7 +20,6 @@ impl RegexPart {
         let mut index = 0;
         let  ends_with_dollar = self.ends_with_dollar;
        
-
         'states: while let Some(state) = queue.pop_front() {
             match state.repetition {
                 RegexRep::Exact(n) => {
@@ -102,8 +101,7 @@ impl RegexPart {
                         match_size,
                         backtrackable: false,
                     })
-                }
-                _ => return Ok(false),        
+                }      
             }
         }   
 
