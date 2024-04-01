@@ -23,6 +23,4 @@ fn main() {
     };
 
     file_handler.process_file(&expression);
-
-
 }

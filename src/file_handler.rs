@@ -16,32 +16,33 @@ impl FileHandler {
 
     pub fn process_file(&self, expression: &str) {
         let reader = BufReader::new(&self.file);
-        for line in reader.lines() {
-            let line = line;
-            let line = line.unwrap_or_default();
-            let words: Vec<&str> = line.split_whitespace().collect();
-            for word in words {
-                let regex = Regex::new(expression);
-                match regex {
-                    Ok(regex) => {
-                        match regex.match_expression(word) {
-                            Ok(result) => {
-                                if result {
-                                    println!("\x1b[31m{}\x1b[0m", word);
+        for line_result in reader.lines() {
+            match line_result {
+                Ok(line) => {
+                    let regex = Regex::new(expression);
+                    match regex {
+                        Ok(regex) => {
+                            match regex.match_expression(&line) {
+                                Ok(result) => {
+                                    if result {
+                                        println!("\x1b[31m{}\x1b[0m", line);
+                                    }
+                                }
+                                Err(err) => {
+                                    eprintln!("Error matching expression: {}", err);
                                 }
                             }
-                            Err(err) => {
-                                eprintln!("Error matching expression: {}", err);
-                            }
+                        }
+                        Err(err) => {
+                            eprintln!("Error creating regex: {}", err);
                         }
                     }
-                    Err(err) => {
-                        eprintln!("Error creating regex: {}", err);
-                    }
                 }
+                Err(err) => {
+                    eprintln!("Error reading line: {}", err);
+                }
+            }
         }
-    }
-
     }
 }
 

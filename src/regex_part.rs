@@ -81,7 +81,7 @@ impl RegexPart {
                         index += s;
                         count += 1;
                         if let Some(m) = max {
-                            if count == m {
+                            if count >= m {
                                 break;
                             }
                         }
@@ -99,7 +99,7 @@ impl RegexPart {
                     }
                     stack.push(EvaluatedStep{
                         state: state,
-                        match_size: match_size,
+                        match_size,
                         backtrackable: false,
                     })
                 }

@@ -1,4 +1,5 @@
 //use crate::bracket_expression::BracketExpression;
+use crate::regex_class::RegexClass;
 
 #[derive(Debug, Clone)]
 pub enum RegexVal {
@@ -7,8 +8,8 @@ pub enum RegexVal {
     BracketExpression{
         chars: Vec<char>, 
         is_negated: bool
-    }
-    //Class(RegexClass),
+    },
+    Class(RegexClass),
 }
 
 impl RegexVal {
@@ -16,7 +17,7 @@ impl RegexVal {
         match self {
             RegexVal::Literal(l) => {
                 if value.chars().next() == Some(*l) {
-                    //println!("matcheo {}", l.len_utf8());
+                    // println!("matcheo {}", l.len_utf8());
                     l.len_utf8()
                 } else {
                     0
@@ -36,6 +37,16 @@ impl RegexVal {
                     return 0;
                 } else {
                     return next_char.map_or(0, |c| c.len_utf8());
+                }
+            },
+            RegexVal::Class(class) => {
+                let next_char = value.chars().next();
+                let matches = next_char.map_or(false, |c| class.matches(&c));
+                if matches {
+                    return next_char.map_or(0, |c| c.len_utf8());
+                } else {
+                    
+                    return 0;
                 }
             }
         }
