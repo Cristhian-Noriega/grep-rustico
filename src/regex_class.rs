@@ -1,16 +1,28 @@
-#[derive(Debug,Clone)]
+/// Represents predefined character classes for regulars expressions.
+
+#[derive(Debug, Clone)]
 pub enum RegexClass {
     Alpha,
-    Alnum,    
-    Digit,  
-    Lower,  
-    Upper,  
-    Space,  
-    Punct,  
+    Alnum,
+    Digit,
+    Lower,
+    Upper,
+    Space,
+    Punct,
 }
 
 impl RegexClass {
-    pub fn from_str(class_name: &str) -> Option<Self> {
+    /// Converts a string representation of a character class to a `RegexClass` enum variant.
+    ///
+    /// # Arguments
+    ///
+    /// * `class_name` - The string representation of the character class.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Some(RegexClass)` if the string representation is a valid character class,
+    /// otherwise returns `None`.
+    pub fn from_str_to_class(class_name: &str) -> Option<Self> {
         match class_name {
             ":alpha:" => Some(RegexClass::Alpha),
             ":digit:" => Some(RegexClass::Digit),
@@ -23,6 +35,15 @@ impl RegexClass {
         }
     }
 
+    /// Checks if a character matches the character class.
+    ///
+    /// # Arguments
+    ///
+    /// * `c` - The character to be checked.
+    ///
+    /// # Returns
+    ///
+    /// Returns `true` if the character matches the character class, otherwise returns `false`.
     pub fn matches(&self, c: &char) -> bool {
         match self {
             RegexClass::Alpha => c.is_ascii_alphabetic(),

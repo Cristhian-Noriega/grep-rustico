@@ -54,7 +54,10 @@ fn test_character_class_alpha() {
 
 #[test]
 fn test_character_class_digit() {
-    run_test("el caracter [[:alnum:]] no es un simbolo", "el caracter a no es un simbolo");
+    run_test(
+        "el caracter [[:alnum:]] no es un simbolo",
+        "el caracter a no es un simbolo",
+    );
 }
 
 #[test]

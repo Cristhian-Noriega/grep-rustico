@@ -1,5 +1,5 @@
-use std::env;
 use grep_rustico::file_handler::FileHandler;
+use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -16,10 +16,10 @@ fn main() {
     let file_handler = match FileHandler::new(file_name) {
         Ok(handler) => handler,
         Err(err) => {
-            eprintln!("Error creating file handler: {}", err);
+            eprintln!("grep: {}: {}", file_name, err);
             return;
         }
     };
 
-    file_handler.process_file(&expression);
+    file_handler.process_file(expression);
 }
