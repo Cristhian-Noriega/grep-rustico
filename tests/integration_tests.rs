@@ -4,7 +4,7 @@ fn run_test(regex: &str, expected_output: &str) {
     let output = Command::new("cargo")
         .arg("run")
         .arg(regex)
-        .arg("test.txt")
+        .arg("texts/test.txt")
         .output()
         .expect("Failed to execute command");
 
