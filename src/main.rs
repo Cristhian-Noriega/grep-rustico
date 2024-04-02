@@ -1,5 +1,4 @@
 use std::env;
-use grep_rustico::regex::Regex;
 use grep_rustico::file_handler::FileHandler;
 
 fn main() {

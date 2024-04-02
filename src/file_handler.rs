@@ -25,7 +25,8 @@ impl FileHandler {
                             match regex.match_expression(&line) {
                                 Ok(result) => {
                                     if result {
-                                        println!("\x1b[31m{}\x1b[0m", line);
+                                        // println!("\x1b[31m{}\x1b[0m", line);
+                                        println!("{}", line);
                                     }
                                 }
                                 Err(err) => {

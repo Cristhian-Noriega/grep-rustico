@@ -1,4 +1,3 @@
-//use crate::bracket_expression::BracketExpression;
 use crate::regex_class::RegexClass;
 
 #[derive(Debug, Clone)]
@@ -17,7 +16,6 @@ impl RegexVal {
         match self {
             RegexVal::Literal(l) => {
                 if value.chars().next() == Some(*l) {
-                    // println!("matcheo {}", l.len_utf8());
                     l.len_utf8()
                 } else {
                     0
