@@ -140,8 +140,10 @@ impl Regex {
                                 Err(err) => return Err(err),
                             }
                             continue;
+                        } else {
+                            return Err(RegexError::InvalidRegularExpression);
                         }
-                        None
+                        
                     }
 
                     '{' => {
@@ -209,6 +211,7 @@ fn parse_bracket_expression(
 ) -> Result<Option<RegexState>, RegexError> {
     let mut bracket_expression = Vec::new();
     let mut is_negated = false;
+    let mut ends_with_bracket = false;
     if next_char == '^' {
         is_negated = true;
     } else {
@@ -216,12 +219,16 @@ fn parse_bracket_expression(
     }
     for c in chars_iter.by_ref() {
         if c == ']' {
+            ends_with_bracket = true;
             break;
         }
         bracket_expression.push(c);
     }
+    if !ends_with_bracket {
+        return Err(RegexError::UnmatchedBracket);
+    }
     if bracket_expression.is_empty() {
-        return Ok(None);
+        return Err(RegexError::UnmatchedBracket);
     }
     Ok(Some(RegexState {
         value: RegexVal::BracketExpression {
@@ -245,16 +252,21 @@ fn parse_character_class(
     chars_iter: &mut std::str::Chars<'_>,
 ) -> Result<Option<RegexState>, RegexError> {
     let mut character_class = Vec::new();
+    let mut it_ends_with_bracket = false;
     for c in chars_iter.by_ref() {
         if c == ']' {
+            it_ends_with_bracket = true;
             break;
         }
         character_class.push(c);
     }
-    chars_iter.next();
+    if !it_ends_with_bracket {
+        return Err(RegexError::UnmatchedBracket);
+    }
     if character_class.is_empty() {
         return Err(RegexError::InvalidCharacterClassName);
     }
+    chars_iter.next();
     let class_name = character_class.iter().collect::<String>();
 
     match RegexClass::from_str_to_class(&class_name) {
