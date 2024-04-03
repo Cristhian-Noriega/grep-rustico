@@ -143,7 +143,6 @@ impl Regex {
                         } else {
                             return Err(RegexError::InvalidRegularExpression);
                         }
-                        
                     }
 
                     '{' => {
