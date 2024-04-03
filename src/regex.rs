@@ -10,7 +10,7 @@ use std::vec;
 /// If the regex contains the `|` operator, it will be split into different `RegexPart` objects.
 #[derive(Debug)]
 pub struct Regex {
-    parts: Vec<RegexPart>,
+    pub parts: Vec<RegexPart>,
 }
 
 impl Regex {
