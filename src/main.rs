@@ -5,7 +5,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() != 3 {
-        eprintln!("Invalid argurments");
+        eprintln!("Invalid arguments, the format is: <expression> <file>");
         return;
     }
 
@@ -21,5 +21,7 @@ fn main() {
         }
     };
 
-    file_handler.process_file(expression);
+    if let Err(err) = file_handler.process_file(expression) {
+        eprintln!("Error: {}", err);
+    }
 }

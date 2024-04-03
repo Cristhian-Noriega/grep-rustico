@@ -1,3 +1,4 @@
+use crate::error::RegexError;
 use crate::evaluated_state::EvaluatedStep;
 use crate::regex_rep::RegexRep;
 use crate::regex_state::RegexState;
@@ -16,9 +17,9 @@ pub struct RegexPart {
 impl RegexPart {
     /// Tries to match a single expression with the regular expression part.
     /// It returns a boolean indicating if the expression matches the regular expression part.
-    pub fn match_sigle_expression(self, value: &str) -> Result<bool, &str> {
+    pub fn match_single_expression(self, value: &str) -> Result<bool, RegexError> {
         if !value.is_ascii() {
-            return Err("el input no es ascii");
+            return Err(RegexError::NonAsciiInput);
         }
 
         let mut queue = VecDeque::from(self.states);
@@ -129,7 +130,6 @@ fn backtrack(
     let mut backtrack_size = 0;
 
     next.push_front(current);
-
     while let Some(e) = evaluated.pop() {
         backtrack_size += e.match_size;
         if e.backtrackable {

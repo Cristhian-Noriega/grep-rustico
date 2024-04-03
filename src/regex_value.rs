@@ -41,24 +41,15 @@ impl RegexVal {
                     0
                 }
             }
-            RegexVal::BracketExpression { chars, is_negated } => {
-                let next_char = value.chars().next();
-                let matches = next_char.map_or(false, |c| chars.contains(&c));
-                if matches != *is_negated {
-                    next_char.map_or(0, |c| c.len_utf8())
-                } else {
-                    0
-                }
-            }
-            RegexVal::Class(class) => {
-                let next_char = value.chars().next();
-                let matches = next_char.map_or(false, |c| class.matches(&c));
-                if matches {
-                    next_char.map_or(0, |c| c.len_utf8())
-                } else {
-                    0
-                }
-            }
+            RegexVal::BracketExpression { chars, is_negated } => match value.chars().next() {
+                Some(c) if chars.contains(&c) != *is_negated => c.len_utf8(),
+                _ => 0,
+            },
+            RegexVal::Class(class) => value
+                .chars()
+                .next()
+                .filter(|&c| class.matches(&c))
+                .map_or(0, |c| c.len_utf8()),
         }
     }
 }

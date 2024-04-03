@@ -1,4 +1,5 @@
 pub mod bracket_expression;
+pub mod error;
 pub mod evaluated_state;
 pub mod file_handler;
 pub mod regex;

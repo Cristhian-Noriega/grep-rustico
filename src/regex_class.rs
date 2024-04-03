@@ -1,3 +1,5 @@
+use crate::error::RegexError;
+
 /// Represents predefined character classes for regulars expressions.
 
 #[derive(Debug, Clone)]
@@ -20,18 +22,18 @@ impl RegexClass {
     ///
     /// # Returns
     ///
-    /// Returns `Some(RegexClass)` if the string representation is a valid character class,
-    /// otherwise returns `None`.
-    pub fn from_str_to_class(class_name: &str) -> Option<Self> {
+    /// Returns a `RegexClass` enum variant if the string is a valid character class name,
+    /// otherwise  returns an `InvalidCharacterClassName` error.
+    pub fn from_str_to_class(class_name: &str) -> Result<Self, RegexError> {
         match class_name {
-            ":alpha:" => Some(RegexClass::Alpha),
-            ":digit:" => Some(RegexClass::Digit),
-            ":alnum:" => Some(RegexClass::Alnum),
-            ":lower:" => Some(RegexClass::Lower),
-            ":upper:" => Some(RegexClass::Upper),
-            ":space:" => Some(RegexClass::Space),
-            ":punct:" => Some(RegexClass::Punct),
-            _ => None,
+            ":alpha:" => Ok(RegexClass::Alpha),
+            ":digit:" => Ok(RegexClass::Digit),
+            ":alnum:" => Ok(RegexClass::Alnum),
+            ":lower:" => Ok(RegexClass::Lower),
+            ":upper:" => Ok(RegexClass::Upper),
+            ":space:" => Ok(RegexClass::Space),
+            ":punct:" => Ok(RegexClass::Punct),
+            _ => Err(RegexError::InvalidCharacterClassName),
         }
     }
 

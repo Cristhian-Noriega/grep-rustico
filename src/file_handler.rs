@@ -1,3 +1,4 @@
+use crate::error::RegexError;
 use crate::regex::Regex;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
@@ -17,30 +18,37 @@ impl FileHandler {
     }
 
     /// Reads the file line by line and processes each line with the given expression.
-    pub fn process_file(&self, expression: &str) {
+    pub fn process_file(&self, expression: &str) -> Result<(), RegexError> {
         let reader = BufReader::new(&self.file);
         for line_result in reader.lines() {
             match line_result {
                 Ok(line) => match self.process_line(expression, &line) {
                     Ok(_) => (),
-                    Err(err) => eprintln!("Error processing line: {}", err),
+                    Err(err) => return Err(err),
                 },
-                Err(err) => eprintln!("Error reading line: {}", err),
+                Err(_) => return Err(RegexError::InvalidFile),
             }
         }
+        Ok(())
     }
 
     /// Processes a single line with the given expression. Prints the matching lines.
-    fn process_line(&self, expression: &str, line: &str) -> Result<(), String> {
-        let regex = Regex::new(expression)?;
-        match regex.match_expression(line) {
-            Ok(result) => {
-                if result {
-                    println!("{}", line);
+    fn process_line(&self, expression: &str, line: &str) -> Result<(), RegexError> {
+        let regex = Regex::new(expression);
+        match regex {
+            Ok(regex) => {
+                let result = regex.match_expression(line);
+                match result {
+                    Ok(result) => {
+                        if result {
+                            println!("{}", line);
+                        }
+                        Ok(())
+                    }
+                    Err(err) => Err(err),
                 }
-                Ok(())
             }
-            Err(err) => Err(format!("Error matching expression: {}", err)),
+            Err(err) => Err(err),
         }
     }
 }
