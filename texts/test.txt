@@ -1,0 +1,13 @@
+abecd
+abzzzcd
+abd
+acd
+df
+la a es una vocal
+la z no es una vocal
+hola abcdefg
+1 es un numero
+el caracter a no es un simbolo
+hola mundo
+PascalCase
+es el fin
