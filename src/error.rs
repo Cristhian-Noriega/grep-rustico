@@ -11,6 +11,8 @@ pub enum RegexError {
     InvalidRegularExpression,
     /// The input is not ASCII
     NonAsciiInput,
+    /// The range in the bracket is invalid
+    InvalidBracketRange,
     /// The file is invalid
     InvalidFile,
 }
@@ -23,6 +25,7 @@ impl fmt::Display for RegexError {
             Self::InvalidRegularExpression => write!(f, "Invalid regular expression"),
             Self::NonAsciiInput => write!(f, "Input is not ASCII"),
             Self::InvalidFile => write!(f, "Invalid file"),
+            Self::InvalidBracketRange => write!(f, "Invalid range end"),
         }
     }
 }

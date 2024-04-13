@@ -111,7 +111,7 @@ impl Regex {
                             match parse_bracket_expression(expression) {
                                 Ok(Some(result)) => Some(result),
                                 Ok(None) => None,
-                                Err(_) => return Err(RegexError::InvalidRegularExpression),
+                                Err(err) => return Err(err),
                             }
                         }
                     }
@@ -180,15 +180,28 @@ impl Regex {
 fn parse_bracket_expression(expression: Vec<char>) -> Result<Option<RegexState>, RegexError> {
     let mut is_negated = false;
     let mut expression = expression;
+    let mut chars: Vec<char> = vec![];
     if expression[0] == '^' {
         is_negated = true;
         expression.remove(0);
     }
+
+    if is_bracket_range(&expression) {
+        // if the end is greate than the start, it will return an error
+        if expression[0] > expression[2] {
+            return Err(RegexError::InvalidBracketRange);
+        }
+        let start = expression[0] as u8;
+        let end = expression[2] as u8;
+        for c in start..=end {
+            chars.push(c as char);
+        }
+    } else {
+        chars = expression;
+    }
+
     Ok(Some(RegexState {
-        value: RegexVal::BracketExpression {
-            chars: expression,
-            is_negated,
-        },
+        value: RegexVal::BracketExpression { chars, is_negated },
         repetition: RegexRep::Exact(1),
     }))
 }
@@ -256,6 +269,10 @@ fn get_expression_inside_bracket(chars_iter: &mut std::str::Chars<'_>) -> Vec<ch
         expression.push(c);
     }
     expression
+}
+
+fn is_bracket_range(expression: &[char]) -> bool {
+    expression.len() == 3 && expression[1] == '-'
 }
 
 #[cfg(test)]
@@ -618,6 +635,24 @@ mod tests {
             Regex::new("hola [[:alpha:]]+")
                 .unwrap()
                 .match_expression("hola a"),
+            Ok(true)
+        );
+    }
+
+    #[test]
+    fn test_match_expression_brackets_range() {
+        assert_eq!(Regex::new("[a-e]").unwrap().match_expression("a"), Ok(true));
+        assert_eq!(Regex::new("[a-e]").unwrap().match_expression("b"), Ok(true));
+        assert_eq!(
+            Regex::new("hol[a-z]").unwrap().match_expression("holu"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("[a-z]").unwrap().match_expression("A"),
+            Ok(false)
+        );
+        assert_eq!(
+            Regex::new("[a-c]as[a-e]").unwrap().match_expression("casa"),
             Ok(true)
         );
     }
