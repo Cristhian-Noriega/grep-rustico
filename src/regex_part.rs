@@ -99,7 +99,7 @@ impl RegexPart {
                     stack.push(EvaluatedStep {
                         state,
                         match_size,
-                        backtrackable: false,
+                        backtrackable: count > min.unwrap_or(0),
                     })
                 }
             }

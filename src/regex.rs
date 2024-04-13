@@ -27,10 +27,9 @@ impl Regex {
         let mut ends_with_dollar = false;
         let mut parts: Vec<RegexPart> = vec![];
         let expressions: Vec<&str> = expression.split('|').collect();
-
         for expr in expressions {
             let mut states: Vec<RegexState> = vec![];
-            if !expression.starts_with('^') {
+            if !expr.starts_with('^') {
                 states.push(RegexState {
                     value: RegexVal::Wildcard,
                     repetition: RegexRep::Any,
@@ -381,7 +380,7 @@ mod tests {
     }
 
     #[test]
-    fn test_match_expression_or() {
+    fn test_match_expression_pipe() {
         assert_eq!(Regex::new("a|b").unwrap().match_expression("a"), Ok(true));
         assert_eq!(Regex::new("a|b").unwrap().match_expression("b"), Ok(true));
         assert_eq!(Regex::new("a|b").unwrap().match_expression("c"), Ok(false));
@@ -390,6 +389,24 @@ mod tests {
         assert_eq!(
             Regex::new("cat|dog").unwrap().match_expression("dog"),
             Ok(true)
+        );
+        assert_eq!(
+            Regex::new("^start|end$")
+                .unwrap()
+                .match_expression("end with end"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("^start|end$")
+                .unwrap()
+                .match_expression("start with start"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("^start|end$")
+                .unwrap()
+                .match_expression("end with start"),
+            Ok(false)
         );
     }
 
