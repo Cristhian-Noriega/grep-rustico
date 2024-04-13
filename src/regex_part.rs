@@ -26,7 +26,6 @@ impl RegexPart {
         let mut stack = Vec::new();
         let mut index = 0;
 
-
         'states: while let Some(state) = queue.pop_front() {
             match state.repetition {
                 RegexRep::Exact(n) => {

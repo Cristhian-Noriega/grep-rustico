@@ -26,19 +26,16 @@ impl Regex {
     pub fn new(expression: &str) -> Result<Self, RegexError> {
         let mut ends_with_dollar = false;
         let mut parts: Vec<RegexPart> = vec![];
-
         let expressions: Vec<&str> = expression.split('|').collect();
 
         for expr in expressions {
             let mut states: Vec<RegexState> = vec![];
-
             if !expression.starts_with('^') {
                 states.push(RegexState {
                     value: RegexVal::Wildcard,
                     repetition: RegexRep::Any,
                 });
             }
-
             let mut chars_iter = expr.chars();
             while let Some(c) = chars_iter.next() {
                 let state: Option<RegexState> = match c {
@@ -46,7 +43,6 @@ impl Regex {
                         value: RegexVal::Wildcard,
                         repetition: RegexRep::Exact(1),
                     }),
-
                     '*' => {
                         if let Some(last) = states.last_mut() {
                             last.repetition = RegexRep::Any;
@@ -56,7 +52,6 @@ impl Regex {
 
                         None
                     }
-
                     '\\' => match chars_iter.next() {
                         Some(literal) => Some(RegexState {
                             value: RegexVal::Literal(literal),
@@ -64,7 +59,6 @@ impl Regex {
                         }),
                         None => return Err(RegexError::InvalidRegularExpression),
                     },
-
                     '?' => {
                         if let Some(last) = states.last_mut() {
                             last.repetition = RegexRep::Range {
@@ -76,7 +70,6 @@ impl Regex {
                         }
                         None
                     }
-
                     '+' => {
                         if let Some(last) = states.last_mut() {
                             last.repetition = RegexRep::Range {
@@ -88,7 +81,6 @@ impl Regex {
                         }
                         None
                     }
-
                     '^' => {
                         if expression.starts_with('^') {
                             None
@@ -96,7 +88,6 @@ impl Regex {
                             return Err(RegexError::InvalidRegularExpression);
                         }
                     }
-
                     '$' => {
                         if chars_iter.next().is_none() {
                             ends_with_dollar = true;
@@ -105,72 +96,25 @@ impl Regex {
                             return Err(RegexError::InvalidRegularExpression);
                         }
                     }
-
                     '|' => None,
 
                     '[' => {
-                        let mut expression: Vec<char> = vec![];
-                        //let mut it_ends_with_bracket = false;
-                        let mut is_char_class = false;
-                        let mut class_name = String::new();
-                        while let Some(c) = chars_iter.next() {
-                            if c == ']' {
-                                class_name = expression[1..].iter().collect::<String>();
-                                if RegexClass::is_character_class(&class_name) {
-                                    is_char_class = true;
-                                    chars_iter.next();
-                                }
-                                //println!("La expression es: {:?}", expression);
-                                break;
-                            }
-                            expression.push(c);
-                            
-                        }
-                        if is_char_class {
-                            match RegexClass::from_str_to_class(&class_name) {
-                                Ok(regex_class) => Some(RegexState {
-                                    value: RegexVal::Class(regex_class),
-                                    repetition: RegexRep::Exact(1),
-                                }),
-                                Err(err) => return Err(err),
+                        let expression = get_expression_inside_bracket(&mut chars_iter);
+                        let class_name = expression[1..].iter().collect::<String>();
+                        if RegexClass::is_character_class(&class_name) {
+                            chars_iter.next();
+                            match parse_character_class(&class_name) {
+                                Ok(result) => Some(result),
+                                Err(_) => return Err(RegexError::InvalidRegularExpression),
                             }
                         } else {
-                            let mut is_negated = false;
-                            //println!("La expression es: {:?}", expression[0]);
-                            if expression[0] == '^' {
-                                is_negated = true;
+                            match parse_bracket_expression(expression) {
+                                Ok(Some(result)) => Some(result),
+                                Ok(None) => None,
+                                Err(_) => return Err(RegexError::InvalidRegularExpression),
                             }
-                            if is_negated {
-                                expression.remove(0);
-                            }
-                            //println!("La expression AHORA es: {:?}", expression);
-                            
-                            Some(RegexState {
-                                value: RegexVal::BracketExpression {
-                                    chars: expression,
-                                    is_negated,
-                                },
-                                repetition: RegexRep::Exact(1),
-                            })
                         }
-                        
-
-                        // if let Some(next_char) = chars_iter.next() {
-                        //     match if next_char == '[' {
-                        //         parse_character_class(&mut chars_iter)
-                        //     } else {
-                        //         parse_bracket_expression(&mut chars_iter, next_char)
-                        //     } {
-                        //         Ok(Some(state)) => states.push(state),
-                        //         Ok(None) => (),
-                        //         Err(err) => return Err(err),
-                        //     }
-                        //     continue;
-                        // } else {
-                        //     return Err(RegexError::InvalidRegularExpression);
-                        // }
                     }
-
                     '{' => {
                         let repetition = parse_range_repetition(&mut chars_iter)?;
                         if let Some(last) = states.last_mut() {
@@ -180,12 +124,10 @@ impl Regex {
                         }
                         None
                     }
-
-                    _  => Some(RegexState {
+                    _ => Some(RegexState {
                         value: RegexVal::Literal(c),
                         repetition: RegexRep::Exact(1),
                     }),
-
                 };
                 if let Some(s) = state {
                     states.push(s);
@@ -235,34 +177,16 @@ impl Regex {
 /// # Returns
 ///
 /// An optional `RegexState` representing the parsed bracket expression if it was successful.
-fn parse_bracket_expression(
-    chars_iter: &mut std::str::Chars<'_>,
-    next_char: char,
-) -> Result<Option<RegexState>, RegexError> {
-    let mut bracket_expression = Vec::new();
+fn parse_bracket_expression(expression: Vec<char>) -> Result<Option<RegexState>, RegexError> {
     let mut is_negated = false;
-    let mut ends_with_bracket = false;
-    if next_char == '^' {
+    let mut expression = expression;
+    if expression[0] == '^' {
         is_negated = true;
-    } else {
-        bracket_expression.push(next_char);
-    }
-    for c in chars_iter.by_ref() {
-        if c == ']' {
-            ends_with_bracket = true;
-            break;
-        }
-        bracket_expression.push(c);
-    }
-    if !ends_with_bracket {
-        return Err(RegexError::UnmatchedBracket);
-    }
-    if bracket_expression.is_empty() {
-        return Err(RegexError::UnmatchedBracket);
+        expression.remove(0);
     }
     Ok(Some(RegexState {
         value: RegexVal::BracketExpression {
-            chars: bracket_expression,
+            chars: expression,
             is_negated,
         },
         repetition: RegexRep::Exact(1),
@@ -277,36 +201,16 @@ fn parse_bracket_expression(
 ///
 /// # Returns
 ///
-/// An optional `RegexState` representing the parsed character class if it was succesful.
-fn parse_character_class(
-    chars_iter: &mut std::str::Chars<'_>,
-) -> Result<Option<RegexState>, RegexError> {
-    let mut character_class = Vec::new();
-    let mut it_ends_with_bracket = false;
-    for c in chars_iter.by_ref() {
-        if c == ']' {
-            it_ends_with_bracket = true;
-            break;
-        }
-        character_class.push(c);
-    }
-    if !it_ends_with_bracket {
-        return Err(RegexError::UnmatchedBracket);
-    }
-    if character_class.is_empty() {
-        return Err(RegexError::InvalidCharacterClassName);
-    }
-    chars_iter.next();
-    let class_name = character_class.iter().collect::<String>();
-
-    match RegexClass::from_str_to_class(&class_name) {
-        Ok(regex_class) => Ok(Some(RegexState {
+fn parse_character_class(class_name: &str) -> Result<RegexState, RegexError> {
+    match RegexClass::from_str_to_class(class_name) {
+        Ok(regex_class) => Ok(RegexState {
             value: RegexVal::Class(regex_class),
             repetition: RegexRep::Exact(1),
-        })),
+        }),
         Err(err) => Err(err),
     }
 }
+
 /// Tries to parse a range repetition in a expression.
 ///
 /// # Arguments
@@ -340,6 +244,18 @@ fn parse_range_repetition(chars_iter: &mut std::str::Chars<'_>) -> Result<RegexR
     }
 
     Ok(RegexRep::Range { min, max })
+}
+
+/// Collect the elements inside an expression that starts with a bracket and return them in a vector
+fn get_expression_inside_bracket(chars_iter: &mut std::str::Chars<'_>) -> Vec<char> {
+    let mut expression = vec![];
+    for c in chars_iter.by_ref() {
+        if c == ']' {
+            break;
+        }
+        expression.push(c);
+    }
+    expression
 }
 
 #[cfg(test)]
@@ -492,9 +408,7 @@ mod tests {
             Ok(false)
         );
         assert_eq!(
-            Regex::new("[[je]")
-                .unwrap()
-                .match_expression("a["),
+            Regex::new("[[je]").unwrap().match_expression("a["),
             Ok(true)
         );
     }
