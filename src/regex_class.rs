@@ -57,4 +57,11 @@ impl RegexClass {
             RegexClass::Punct => c.is_ascii_punctuation(),
         }
     }
+//     /// Checks if a character class is a predefined character class.
+    pub fn is_character_class( string: &str ) -> bool {
+        match string {
+            ":alpha:" | ":digit:" | ":alnum:" | ":lower:" | ":upper:" | ":space:" | ":punct:" => true,
+            _ => false,
+        }
+    }
 }

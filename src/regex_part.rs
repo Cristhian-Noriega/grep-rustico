@@ -25,7 +25,7 @@ impl RegexPart {
         let mut queue = VecDeque::from(self.states);
         let mut stack = Vec::new();
         let mut index = 0;
-        let ends_with_dollar = self.ends_with_dollar;
+
 
         'states: while let Some(state) = queue.pop_front() {
             match state.repetition {
@@ -106,7 +106,7 @@ impl RegexPart {
             }
         }
 
-        if ends_with_dollar {
+        if self.ends_with_dollar {
             if index == value.len() {
                 Ok(true)
             } else {

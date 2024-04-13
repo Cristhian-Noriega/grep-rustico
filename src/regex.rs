@@ -47,26 +47,6 @@ impl Regex {
                         repetition: RegexRep::Exact(1),
                     }),
 
-                    'a'..='z' => Some(RegexState {
-                        value: RegexVal::Literal(c),
-                        repetition: RegexRep::Exact(1),
-                    }),
-
-                    'A'..='Z' => Some(RegexState {
-                        value: RegexVal::Literal(c),
-                        repetition: RegexRep::Exact(1),
-                    }),
-
-                    '0'..='9' => Some(RegexState {
-                        value: RegexVal::Literal(c),
-                        repetition: RegexRep::Exact(1),
-                    }),
-
-                    ' ' => Some(RegexState {
-                        value: RegexVal::Literal(' '),
-                        repetition: RegexRep::Exact(1),
-                    }),
-
                     '*' => {
                         if let Some(last) = states.last_mut() {
                             last.repetition = RegexRep::Any;
@@ -129,20 +109,66 @@ impl Regex {
                     '|' => None,
 
                     '[' => {
-                        if let Some(next_char) = chars_iter.next() {
-                            match if next_char == '[' {
-                                parse_character_class(&mut chars_iter)
-                            } else {
-                                parse_bracket_expression(&mut chars_iter, next_char)
-                            } {
-                                Ok(Some(state)) => states.push(state),
-                                Ok(None) => (),
+                        let mut expression: Vec<char> = vec![];
+                        //let mut it_ends_with_bracket = false;
+                        let mut is_char_class = false;
+                        let mut class_name = String::new();
+                        while let Some(c) = chars_iter.next() {
+                            if c == ']' {
+                                class_name = expression[1..].iter().collect::<String>();
+                                if RegexClass::is_character_class(&class_name) {
+                                    is_char_class = true;
+                                    chars_iter.next();
+                                }
+                                //println!("La expression es: {:?}", expression);
+                                break;
+                            }
+                            expression.push(c);
+                            
+                        }
+                        if is_char_class {
+                            match RegexClass::from_str_to_class(&class_name) {
+                                Ok(regex_class) => Some(RegexState {
+                                    value: RegexVal::Class(regex_class),
+                                    repetition: RegexRep::Exact(1),
+                                }),
                                 Err(err) => return Err(err),
                             }
-                            continue;
                         } else {
-                            return Err(RegexError::InvalidRegularExpression);
+                            let mut is_negated = false;
+                            //println!("La expression es: {:?}", expression[0]);
+                            if expression[0] == '^' {
+                                is_negated = true;
+                            }
+                            if is_negated {
+                                expression.remove(0);
+                            }
+                            //println!("La expression AHORA es: {:?}", expression);
+                            
+                            Some(RegexState {
+                                value: RegexVal::BracketExpression {
+                                    chars: expression,
+                                    is_negated,
+                                },
+                                repetition: RegexRep::Exact(1),
+                            })
                         }
+                        
+
+                        // if let Some(next_char) = chars_iter.next() {
+                        //     match if next_char == '[' {
+                        //         parse_character_class(&mut chars_iter)
+                        //     } else {
+                        //         parse_bracket_expression(&mut chars_iter, next_char)
+                        //     } {
+                        //         Ok(Some(state)) => states.push(state),
+                        //         Ok(None) => (),
+                        //         Err(err) => return Err(err),
+                        //     }
+                        //     continue;
+                        // } else {
+                        //     return Err(RegexError::InvalidRegularExpression);
+                        // }
                     }
 
                     '{' => {
@@ -154,7 +180,12 @@ impl Regex {
                         }
                         None
                     }
-                    _ => return Err(RegexError::InvalidRegularExpression),
+
+                    _  => Some(RegexState {
+                        value: RegexVal::Literal(c),
+                        repetition: RegexRep::Exact(1),
+                    }),
+
                 };
                 if let Some(s) = state {
                     states.push(s);
@@ -459,6 +490,12 @@ mod tests {
                 .unwrap()
                 .match_expression("vocal"),
             Ok(false)
+        );
+        assert_eq!(
+            Regex::new("[[je]")
+                .unwrap()
+                .match_expression("a["),
+            Ok(true)
         );
     }
 
