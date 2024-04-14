@@ -211,7 +211,6 @@ fn parse_bracket_expression(expression: Vec<char>) -> Result<Option<RegexState>,
     }
 
     if expression.len() == 3 && expression[1] == '-' {
-        // if the end is greate than the start, it will return an error
         if expression[0] > expression[2] {
             return Err(RegexError::InvalidBracketRange);
         }
