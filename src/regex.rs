@@ -63,6 +63,7 @@ impl Regex {
                 ends_with_dollar,
             });
         }
+        //println!("parts: {:?}", parts);
         Ok(Regex { parts })
     }
 
@@ -75,12 +76,12 @@ impl Regex {
     /// # Returns
     ///
     /// A `Result` containing `true` if the string matches the regular expression, or `false` otherwise.
-    pub fn match_expression(self, value: &str) -> Result<bool, RegexError> {
+    pub fn match_expression(&self, value: &str) -> Result<bool, RegexError> {
         if !value.is_ascii() {
             return Err(RegexError::NonAsciiInput);
         }
 
-        for part in self.parts {
+        for part in &self.parts {
             match part.match_single_expression(value) {
                 Ok(true) => return Ok(true),
                 Err(err) => return Err(err),
@@ -185,6 +186,15 @@ fn parse_curly_bracket(
     let repetition = parse_range_repetition(chars_iter)?;
     if let Some(last) = states.last_mut() {
         last.repetition = repetition;
+        // if states.len() == 2 {
+        //     if let Some(first) = states.first() {
+        //         if matches!(first.value, RegexVal::Wildcard)
+        //             && matches!(first.value, RegexVal::Wildcard)
+        //         {
+        //             states.remove(0);
+        //         }
+        //     }
+        // }
     } else {
         return Err(RegexError::InvalidRegularExpression);
     }
@@ -313,6 +323,10 @@ mod tests {
         assert_eq!(Regex::new("a?b").unwrap().match_expression("ab"), Ok(true));
         assert_eq!(Regex::new("a?b").unwrap().match_expression("aab"), Ok(true));
         assert_eq!(Regex::new("a?b").unwrap().match_expression("aa"), Ok(false));
+        assert_eq!(
+            Regex::new("abc?c").unwrap().match_expression("abc"),
+            Ok(true)
+        );
     }
 
     #[test]
@@ -574,6 +588,22 @@ mod tests {
             Regex::new("ab{2,4}cd").unwrap().match_expression("cabbcd"),
             Ok(true)
         );
+        assert_eq!(
+            Regex::new("ab{1,3}b").unwrap().match_expression("abb"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("b{1,3}a").unwrap().match_expression("ebba"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("b{1,3}a").unwrap().match_expression("ebbbbba"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("b{2,5}a").unwrap().match_expression("eba"),
+            Ok(false)
+        );
     }
 
     #[test]
@@ -592,6 +622,14 @@ mod tests {
         );
         assert_eq!(
             Regex::new("a{,3}b").unwrap().match_expression("eaaaab"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("b{,3}a").unwrap().match_expression("ebba"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("b{,2}a").unwrap().match_expression("a"),
             Ok(true)
         );
     }
@@ -616,6 +654,14 @@ mod tests {
         );
         assert_eq!(
             Regex::new("efga{3,}").unwrap().match_expression("efgaaaa"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("ba{3,}").unwrap().match_expression("baaa"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("ab{3,}").unwrap().match_expression("eeeabbba"),
             Ok(true)
         );
     }

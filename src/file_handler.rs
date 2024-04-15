@@ -19,10 +19,14 @@ impl FileHandler {
 
     /// Reads the file line by line and processes each line with the given expression.
     pub fn process_file(&self, expression: &str) -> Result<(), RegexError> {
+        let regex = match Regex::new(expression) {
+            Ok(regex) => regex,
+            Err(err) => return Err(err), 
+        }; 
         let reader = BufReader::new(&self.file);
         for line_result in reader.lines() {
             match line_result {
-                Ok(line) => match self.process_line(expression, &line) {
+                Ok(line) => match self.process_line(&regex, &line) {
                     Ok(_) => (),
                     Err(err) => return Err(err),
                 },
@@ -32,21 +36,15 @@ impl FileHandler {
         Ok(())
     }
 
-    /// Processes a single line with the given expression. Prints the matching lines.
-    fn process_line(&self, expression: &str, line: &str) -> Result<(), RegexError> {
-        let regex = Regex::new(expression);
-        match regex {
-            Ok(regex) => {
-                let result = regex.match_expression(line);
-                match result {
-                    Ok(result) => {
-                        if result {
-                            println!("{}", line);
-                        }
-                        Ok(())
-                    }
-                    Err(err) => Err(err),
+    /// Processes a single line with the given expression. Prints the line if there's a match.
+    fn process_line(&self, regex: &Regex, line: &str) -> Result<(), RegexError> {
+        let result = regex.match_expression(line);
+        match result {
+            Ok(result) => {
+                if result {
+                    println!("{}", line);
                 }
+                Ok(())
             }
             Err(err) => Err(err),
         }

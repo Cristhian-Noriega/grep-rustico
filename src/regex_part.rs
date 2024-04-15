@@ -17,12 +17,12 @@ pub struct RegexPart {
 impl RegexPart {
     /// Tries to match a single expression with the regular expression part.
     /// It returns a boolean indicating if the expression matches the regular expression part.
-    pub fn match_single_expression(self, value: &str) -> Result<bool, RegexError> {
+    pub fn match_single_expression(&self, value: &str) -> Result<bool, RegexError> {
         if !value.is_ascii() {
             return Err(RegexError::NonAsciiInput);
         }
 
-        let mut queue = VecDeque::from(self.states);
+        let mut queue = VecDeque::from(self.states.clone());
         let mut stack = Vec::new();
         let mut index = 0;
 
