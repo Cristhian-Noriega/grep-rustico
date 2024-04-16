@@ -92,6 +92,11 @@ impl Regex {
     }
 }
 
+/// Tries to parse a literal character in a expression.
+/// # Arguments
+/// * `c` - A character representing the literal to parse.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed literal if it was successful.
 fn parse_literal(c: char) -> Result<Option<RegexState>, RegexError> {
     Ok(Some(RegexState {
         value: RegexVal::Literal(c),
@@ -99,6 +104,11 @@ fn parse_literal(c: char) -> Result<Option<RegexState>, RegexError> {
     }))
 }
 
+/// Tries to parse a dot in a expression.
+/// # Arguments
+/// * `c` - A character representing the dot to parse.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed dot if it was successful.
 fn parse_dot() -> Result<Option<RegexState>, RegexError> {
     Ok(Some(RegexState {
         value: RegexVal::Wildcard,
@@ -106,6 +116,11 @@ fn parse_dot() -> Result<Option<RegexState>, RegexError> {
     }))
 }
 
+/// Tries to parse a star in a expression.
+/// # Arguments
+/// * `states` - A mutable reference to the vector of `RegexState` objects.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed star if it was successful.
 fn parse_star(states: &mut [RegexState]) -> Result<Option<RegexState>, RegexError> {
     if let Some(last) = states.last_mut() {
         last.repetition = RegexRep::Any;
@@ -115,6 +130,11 @@ fn parse_star(states: &mut [RegexState]) -> Result<Option<RegexState>, RegexErro
     }
 }
 
+/// Tries to parse a backslash in a expression.
+/// # Arguments
+/// * `chars_iter` - A mutable reference to the character iterator.
+/// # Returns
+/// An optional `RegexState`  in a Result representing the parsed backslash if it was successful.
 fn parse_backslash(chars_iter: &mut std::str::Chars<'_>) -> Result<Option<RegexState>, RegexError> {
     match chars_iter.next() {
         Some(literal) => Ok(Some(RegexState {
@@ -125,6 +145,11 @@ fn parse_backslash(chars_iter: &mut std::str::Chars<'_>) -> Result<Option<RegexS
     }
 }
 
+/// Tries to parse a question mark in a expression.
+/// # Arguments
+/// * `states` - A mutable reference to the vector of `RegexState` objects.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed question mark if it was successful.
 fn parse_question(states: &mut [RegexState]) -> Result<Option<RegexState>, RegexError> {
     if let Some(last) = states.last_mut() {
         last.repetition = RegexRep::Range {
@@ -137,6 +162,11 @@ fn parse_question(states: &mut [RegexState]) -> Result<Option<RegexState>, Regex
     }
 }
 
+/// Tries to parse a plus in a expression.
+/// # Arguments
+/// * `states` - A mutable reference to the vector of `RegexState` objects.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed plus if it was successful.
 fn parse_plus(states: &mut [RegexState]) -> Result<Option<RegexState>, RegexError> {
     if let Some(last) = states.last_mut() {
         last.repetition = RegexRep::Range {
@@ -149,6 +179,11 @@ fn parse_plus(states: &mut [RegexState]) -> Result<Option<RegexState>, RegexErro
     }
 }
 
+/// Tries to parse a caret in a expression.
+/// # Arguments
+/// * `expr` - A string slice representing the expression to parse.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed caret if it was successful.
 fn parse_caret(expr: &str) -> Result<Option<RegexState>, RegexError> {
     if expr.starts_with('^') {
         Ok(None)
@@ -157,6 +192,11 @@ fn parse_caret(expr: &str) -> Result<Option<RegexState>, RegexError> {
     }
 }
 
+/// Tries to parse a dollar in a expression.
+/// # Arguments
+/// * `chars_iter` - A mutable reference to the character iterator.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed dollar if it was successful.
 fn parse_dollar(chars_iter: &mut std::str::Chars<'_>) -> Result<Option<RegexState>, RegexError> {
     if chars_iter.next().is_none() {
         Ok(None)
@@ -165,6 +205,11 @@ fn parse_dollar(chars_iter: &mut std::str::Chars<'_>) -> Result<Option<RegexStat
     }
 }
 
+/// Tries to parse a bracket in a expression.
+/// # Arguments
+/// * `chars_iter` - A mutable reference to the character iterator.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed bracket if it was successful.
 fn parse_bracket(chars_iter: &mut std::str::Chars<'_>) -> Result<Option<RegexState>, RegexError> {
     let expression = get_expression_inside_bracket(chars_iter);
     let class_name = expression[1..].iter().collect::<String>();
@@ -179,6 +224,12 @@ fn parse_bracket(chars_iter: &mut std::str::Chars<'_>) -> Result<Option<RegexSta
     }
 }
 
+/// Tries to parse a curly bracket in a expression.
+/// # Arguments
+/// * `chars_iter` - A mutable reference to the character iterator.
+/// * `states` - A mutable reference to the vector of `RegexState` objects.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed curly bracket if it was successful.
 fn parse_curly_bracket(
     chars_iter: &mut std::str::Chars<'_>,
     states: &mut [RegexState],
@@ -186,15 +237,6 @@ fn parse_curly_bracket(
     let repetition = parse_range_repetition(chars_iter)?;
     if let Some(last) = states.last_mut() {
         last.repetition = repetition;
-        // if states.len() == 2 {
-        //     if let Some(first) = states.first() {
-        //         if matches!(first.value, RegexVal::Wildcard)
-        //             && matches!(first.value, RegexVal::Wildcard)
-        //         {
-        //             states.remove(0);
-        //         }
-        //     }
-        // }
     } else {
         return Err(RegexError::InvalidRegularExpression);
     }

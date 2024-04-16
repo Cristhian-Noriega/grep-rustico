@@ -66,12 +66,12 @@ impl RegexPart {
                                 None => return Ok(false),
                             }
                         }
+                        stack.push(EvaluatedStep {
+                            state,
+                            match_size,
+                            backtrackable: count > m,
+                        })
                     }
-                    stack.push(EvaluatedStep {
-                        state,
-                        match_size,
-                        backtrackable: count > min.unwrap_or(0),
-                    })
                 }
             }
         }

@@ -21,8 +21,8 @@ impl FileHandler {
     pub fn process_file(&self, expression: &str) -> Result<(), RegexError> {
         let regex = match Regex::new(expression) {
             Ok(regex) => regex,
-            Err(err) => return Err(err), 
-        }; 
+            Err(err) => return Err(err),
+        };
         let reader = BufReader::new(&self.file);
         for line_result in reader.lines() {
             match line_result {
