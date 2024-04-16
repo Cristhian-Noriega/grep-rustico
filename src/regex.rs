@@ -23,115 +23,40 @@ impl Regex {
     /// # Returns
     ///
     /// A `Result` containing the `Regex` instance if the expression is valid, or a RegexError if the expression is invalid.
+    ///
     pub fn new(expression: &str) -> Result<Self, RegexError> {
-        let mut ends_with_dollar = false;
-        let mut parts: Vec<RegexPart> = vec![];
         let expressions: Vec<&str> = expression.split('|').collect();
+        let mut parts: Vec<RegexPart> = vec![];
+
         for expr in expressions {
             let mut states: Vec<RegexState> = vec![];
+            let mut chars_iter = expr.chars();
+            let ends_with_dollar = expr.ends_with('$');
             if !expr.starts_with('^') {
                 states.push(RegexState {
                     value: RegexVal::Wildcard,
                     repetition: RegexRep::Any,
                 });
             }
-            let mut chars_iter = expr.chars();
             while let Some(c) = chars_iter.next() {
-                let state: Option<RegexState> = match c {
-                    '.' => Some(RegexState {
-                        value: RegexVal::Wildcard,
-                        repetition: RegexRep::Exact(1),
-                    }),
-                    '*' => {
-                        if let Some(last) = states.last_mut() {
-                            last.repetition = RegexRep::Any;
-                        } else {
-                            return Err(RegexError::InvalidRegularExpression);
-                        }
-
-                        None
-                    }
-                    '\\' => match chars_iter.next() {
-                        Some(literal) => Some(RegexState {
-                            value: RegexVal::Literal(literal),
-                            repetition: RegexRep::Exact(1),
-                        }),
-                        None => return Err(RegexError::InvalidRegularExpression),
-                    },
-                    '?' => {
-                        if let Some(last) = states.last_mut() {
-                            last.repetition = RegexRep::Range {
-                                min: Some(0),
-                                max: Some(1),
-                            };
-                        } else {
-                            return Err(RegexError::InvalidRegularExpression);
-                        }
-                        None
-                    }
-                    '+' => {
-                        if let Some(last) = states.last_mut() {
-                            last.repetition = RegexRep::Range {
-                                min: Some(1),
-                                max: None,
-                            };
-                        } else {
-                            return Err(RegexError::InvalidRegularExpression);
-                        }
-                        None
-                    }
-                    '^' => {
-                        if expression.starts_with('^') {
-                            None
-                        } else {
-                            return Err(RegexError::InvalidRegularExpression);
-                        }
-                    }
-                    '$' => {
-                        if chars_iter.next().is_none() {
-                            ends_with_dollar = true;
-                            break;
-                        } else {
-                            return Err(RegexError::InvalidRegularExpression);
-                        }
-                    }
-                    '|' => None,
-
-                    '[' => {
-                        let expression = get_expression_inside_bracket(&mut chars_iter);
-                        let class_name = expression[1..].iter().collect::<String>();
-                        if RegexClass::is_character_class(&class_name) {
-                            chars_iter.next();
-                            match parse_character_class(&class_name) {
-                                Ok(result) => Some(result),
-                                Err(_) => return Err(RegexError::InvalidRegularExpression),
-                            }
-                        } else {
-                            match parse_bracket_expression(expression) {
-                                Ok(Some(result)) => Some(result),
-                                Ok(None) => None,
-                                Err(err) => return Err(err),
-                            }
-                        }
-                    }
-                    '{' => {
-                        let repetition = parse_range_repetition(&mut chars_iter)?;
-                        if let Some(last) = states.last_mut() {
-                            last.repetition = repetition;
-                        } else {
-                            return Err(RegexError::InvalidRegularExpression);
-                        }
-                        None
-                    }
-                    _ => Some(RegexState {
-                        value: RegexVal::Literal(c),
-                        repetition: RegexRep::Exact(1),
-                    }),
+                let state = match c {
+                    '.' => parse_dot(),
+                    '*' => parse_star(&mut states),
+                    '\\' => parse_backslash(&mut chars_iter),
+                    '?' => parse_question(&mut states),
+                    '+' => parse_plus(&mut states),
+                    '^' => parse_caret(expr),
+                    '$' => parse_dollar(&mut chars_iter),
+                    '|' => continue,
+                    '[' => parse_bracket(&mut chars_iter),
+                    '{' => parse_curly_bracket(&mut chars_iter, &mut states),
+                    _ => parse_literal(c),
                 };
-                if let Some(s) = state {
-                    states.push(s);
+                match state {
+                    Ok(Some(s)) => states.push(s),
+                    Ok(None) => (),
+                    Err(err) => return Err(err),
                 }
-                ends_with_dollar = false;
             }
             parts.push(RegexPart {
                 states,
@@ -150,12 +75,12 @@ impl Regex {
     /// # Returns
     ///
     /// A `Result` containing `true` if the string matches the regular expression, or `false` otherwise.
-    pub fn match_expression(self, value: &str) -> Result<bool, RegexError> {
+    pub fn match_expression(&self, value: &str) -> Result<bool, RegexError> {
         if !value.is_ascii() {
             return Err(RegexError::NonAsciiInput);
         }
 
-        for part in self.parts {
+        for part in &self.parts {
             match part.match_single_expression(value) {
                 Ok(true) => return Ok(true),
                 Err(err) => return Err(err),
@@ -164,6 +89,157 @@ impl Regex {
         }
         Ok(false)
     }
+}
+
+/// Tries to parse a literal character in a expression.
+/// # Arguments
+/// * `c` - A character representing the literal to parse.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed literal if it was successful.
+fn parse_literal(c: char) -> Result<Option<RegexState>, RegexError> {
+    Ok(Some(RegexState {
+        value: RegexVal::Literal(c),
+        repetition: RegexRep::Exact(1),
+    }))
+}
+
+/// Tries to parse a dot in a expression.
+/// # Arguments
+/// * `c` - A character representing the dot to parse.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed dot if it was successful.
+fn parse_dot() -> Result<Option<RegexState>, RegexError> {
+    Ok(Some(RegexState {
+        value: RegexVal::Wildcard,
+        repetition: RegexRep::Exact(1),
+    }))
+}
+
+/// Tries to parse a star in a expression.
+/// # Arguments
+/// * `states` - A mutable reference to the vector of `RegexState` objects.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed star if it was successful.
+fn parse_star(states: &mut [RegexState]) -> Result<Option<RegexState>, RegexError> {
+    if let Some(last) = states.last_mut() {
+        last.repetition = RegexRep::Any;
+        Ok(None)
+    } else {
+        Err(RegexError::InvalidRegularExpression)
+    }
+}
+
+/// Tries to parse a backslash in a expression.
+/// # Arguments
+/// * `chars_iter` - A mutable reference to the character iterator.
+/// # Returns
+/// An optional `RegexState`  in a Result representing the parsed backslash if it was successful.
+fn parse_backslash(chars_iter: &mut std::str::Chars<'_>) -> Result<Option<RegexState>, RegexError> {
+    match chars_iter.next() {
+        Some(literal) => Ok(Some(RegexState {
+            value: RegexVal::Literal(literal),
+            repetition: RegexRep::Exact(1),
+        })),
+        None => Err(RegexError::InvalidRegularExpression),
+    }
+}
+
+/// Tries to parse a question mark in a expression.
+/// # Arguments
+/// * `states` - A mutable reference to the vector of `RegexState` objects.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed question mark if it was successful.
+fn parse_question(states: &mut [RegexState]) -> Result<Option<RegexState>, RegexError> {
+    if let Some(last) = states.last_mut() {
+        last.repetition = RegexRep::Range {
+            min: Some(0),
+            max: Some(1),
+        };
+        Ok(None)
+    } else {
+        Err(RegexError::InvalidRegularExpression)
+    }
+}
+
+/// Tries to parse a plus in a expression.
+/// # Arguments
+/// * `states` - A mutable reference to the vector of `RegexState` objects.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed plus if it was successful.
+fn parse_plus(states: &mut [RegexState]) -> Result<Option<RegexState>, RegexError> {
+    if let Some(last) = states.last_mut() {
+        last.repetition = RegexRep::Range {
+            min: Some(1),
+            max: None,
+        };
+        Ok(None)
+    } else {
+        Err(RegexError::InvalidRegularExpression)
+    }
+}
+
+/// Tries to parse a caret in a expression.
+/// # Arguments
+/// * `expr` - A string slice representing the expression to parse.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed caret if it was successful.
+fn parse_caret(expr: &str) -> Result<Option<RegexState>, RegexError> {
+    if expr.starts_with('^') {
+        Ok(None)
+    } else {
+        Err(RegexError::InvalidRegularExpression)
+    }
+}
+
+/// Tries to parse a dollar in a expression.
+/// # Arguments
+/// * `chars_iter` - A mutable reference to the character iterator.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed dollar if it was successful.
+fn parse_dollar(chars_iter: &mut std::str::Chars<'_>) -> Result<Option<RegexState>, RegexError> {
+    if chars_iter.next().is_none() {
+        Ok(None)
+    } else {
+        Err(RegexError::InvalidRegularExpression)
+    }
+}
+
+/// Tries to parse a bracket in a expression.
+/// # Arguments
+/// * `chars_iter` - A mutable reference to the character iterator.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed bracket if it was successful.
+fn parse_bracket(chars_iter: &mut std::str::Chars<'_>) -> Result<Option<RegexState>, RegexError> {
+    let expression = get_expression_inside_bracket(chars_iter);
+    let class_name = expression[1..].iter().collect::<String>();
+    if RegexClass::is_character_class(&class_name) {
+        chars_iter.next();
+        match parse_character_class(&class_name) {
+            Ok(result) => Ok(Some(result)),
+            Err(_) => Err(RegexError::InvalidRegularExpression),
+        }
+    } else {
+        parse_bracket_expression(expression)
+    }
+}
+
+/// Tries to parse a curly bracket in a expression.
+/// # Arguments
+/// * `chars_iter` - A mutable reference to the character iterator.
+/// * `states` - A mutable reference to the vector of `RegexState` objects.
+/// # Returns
+/// An optional `RegexState` in a Result representing the parsed curly bracket if it was successful.
+fn parse_curly_bracket(
+    chars_iter: &mut std::str::Chars<'_>,
+    states: &mut [RegexState],
+) -> Result<Option<RegexState>, RegexError> {
+    let repetition = parse_range_repetition(chars_iter)?;
+    if let Some(last) = states.last_mut() {
+        last.repetition = repetition;
+    } else {
+        return Err(RegexError::InvalidRegularExpression);
+    }
+    Ok(None)
 }
 
 /// Tries to parse a bracket expression in a expression.
@@ -185,8 +261,7 @@ fn parse_bracket_expression(expression: Vec<char>) -> Result<Option<RegexState>,
         expression.remove(0);
     }
 
-    if is_bracket_range(&expression) {
-        // if the end is greate than the start, it will return an error
+    if expression.len() == 3 && expression[1] == '-' {
         if expression[0] > expression[2] {
             return Err(RegexError::InvalidBracketRange);
         }
@@ -270,10 +345,6 @@ fn get_expression_inside_bracket(chars_iter: &mut std::str::Chars<'_>) -> Vec<ch
     expression
 }
 
-fn is_bracket_range(expression: &[char]) -> bool {
-    expression.len() == 3 && expression[1] == '-'
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -293,6 +364,10 @@ mod tests {
         assert_eq!(Regex::new("a?b").unwrap().match_expression("ab"), Ok(true));
         assert_eq!(Regex::new("a?b").unwrap().match_expression("aab"), Ok(true));
         assert_eq!(Regex::new("a?b").unwrap().match_expression("aa"), Ok(false));
+        assert_eq!(
+            Regex::new("abc?c").unwrap().match_expression("abc"),
+            Ok(true)
+        );
     }
 
     #[test]
@@ -554,6 +629,22 @@ mod tests {
             Regex::new("ab{2,4}cd").unwrap().match_expression("cabbcd"),
             Ok(true)
         );
+        assert_eq!(
+            Regex::new("ab{1,3}b").unwrap().match_expression("abb"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("b{1,3}a").unwrap().match_expression("ebba"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("b{1,3}a").unwrap().match_expression("ebbbbba"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("b{2,5}a").unwrap().match_expression("eba"),
+            Ok(false)
+        );
     }
 
     #[test]
@@ -572,6 +663,14 @@ mod tests {
         );
         assert_eq!(
             Regex::new("a{,3}b").unwrap().match_expression("eaaaab"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("b{,3}a").unwrap().match_expression("ebba"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("b{,2}a").unwrap().match_expression("a"),
             Ok(true)
         );
     }
@@ -596,6 +695,14 @@ mod tests {
         );
         assert_eq!(
             Regex::new("efga{3,}").unwrap().match_expression("efgaaaa"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("ba{3,}").unwrap().match_expression("baaa"),
+            Ok(true)
+        );
+        assert_eq!(
+            Regex::new("ab{3,}").unwrap().match_expression("eeeabbba"),
             Ok(true)
         );
     }

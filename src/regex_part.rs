@@ -17,12 +17,12 @@ pub struct RegexPart {
 impl RegexPart {
     /// Tries to match a single expression with the regular expression part.
     /// It returns a boolean indicating if the expression matches the regular expression part.
-    pub fn match_single_expression(self, value: &str) -> Result<bool, RegexError> {
+    pub fn match_single_expression(&self, value: &str) -> Result<bool, RegexError> {
         if !value.is_ascii() {
             return Err(RegexError::NonAsciiInput);
         }
 
-        let mut queue = VecDeque::from(self.states);
+        let mut queue = VecDeque::from(self.states.clone());
         let mut stack = Vec::new();
         let mut index = 0;
 
@@ -45,7 +45,6 @@ impl RegexPart {
                             index += s;
                         }
                     }
-
                     stack.push(EvaluatedStep {
                         state,
                         match_size,
@@ -53,38 +52,10 @@ impl RegexPart {
                     })
                 }
                 RegexRep::Any => {
-                    let mut keep_matching = true;
-                    while keep_matching {
-                        let match_size = state.value.matches(&value[index..]);
-                        if match_size != 0 {
-                            index += match_size;
-                            stack.push(EvaluatedStep {
-                                state: state.clone(),
-                                match_size,
-                                backtrackable: true,
-                            });
-                        } else {
-                            keep_matching = false;
-                        }
-                    }
+                    handle_any_repetition(&mut index, &state, value, &mut stack);
                 }
                 RegexRep::Range { min, max } => {
-                    let mut match_size = 0;
-                    let mut count = 0;
-                    loop {
-                        let s = state.value.matches(&value[index..]);
-                        if s == 0 {
-                            break;
-                        }
-                        match_size += s;
-                        index += s;
-                        count += 1;
-                        if let Some(m) = max {
-                            if count >= m {
-                                break;
-                            }
-                        }
-                    }
+                    let (match_size, count) = get_count_size(&state, value, &mut index, max);
                     if let Some(m) = min {
                         if count < m {
                             match backtrack(state, &mut stack, &mut queue) {
@@ -95,26 +66,69 @@ impl RegexPart {
                                 None => return Ok(false),
                             }
                         }
+                        stack.push(EvaluatedStep {
+                            state,
+                            match_size,
+                            backtrackable: count > m,
+                        })
                     }
-                    stack.push(EvaluatedStep {
-                        state,
-                        match_size,
-                        backtrackable: count > min.unwrap_or(0),
-                    })
                 }
             }
         }
 
         if self.ends_with_dollar {
-            if index == value.len() {
-                Ok(true)
-            } else {
-                Ok(false)
-            }
+            Ok(index == value.len())
         } else {
             Ok(true)
         }
     }
+}
+
+fn handle_any_repetition(
+    index: &mut usize,
+    state: &RegexState,
+    value: &str,
+    stack: &mut Vec<EvaluatedStep>,
+) {
+    let mut keep_matching = true;
+    while keep_matching {
+        let match_size = state.value.matches(&value[*index..]);
+        if match_size != 0 {
+            *index += match_size;
+            stack.push(EvaluatedStep {
+                state: state.clone(),
+                match_size,
+                backtrackable: true,
+            });
+        } else {
+            keep_matching = false;
+        }
+    }
+}
+
+fn get_count_size(
+    state: &RegexState,
+    value: &str,
+    index: &mut usize,
+    max: Option<usize>,
+) -> (usize, usize) {
+    let mut match_size = 0;
+    let mut count = 0;
+    loop {
+        let s = state.value.matches(&value[*index..]);
+        if s == 0 {
+            break;
+        }
+        match_size += s;
+        *index += s;
+        count += 1;
+        if let Some(m) = max {
+            if count >= m {
+                break;
+            }
+        }
+    }
+    (match_size, count)
 }
 
 /// This function is used to backtrack when a match is not found.
