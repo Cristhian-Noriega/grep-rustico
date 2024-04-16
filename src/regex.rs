@@ -63,7 +63,6 @@ impl Regex {
                 ends_with_dollar,
             });
         }
-        //println!("parts: {:?}", parts);
         Ok(Regex { parts })
     }
 
