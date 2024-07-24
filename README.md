@@ -11,7 +11,7 @@ Grep Rustico is a command-line tool inspired by the classic Unix/Linux `grep` ut
 ## Usage
 
 ```
-cargo run -- <regex_pattern> <file_path>
+cargo run <regex_pattern> <file_path>
 ```
 
 ## Documentation
