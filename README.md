@@ -16,8 +16,12 @@ cargo run -- <regex_pattern> <file_path>
 
 ## Documentation
 
-To view the documentation for this project, run the following command in the project directory:
-
 ```
 cargo doc --open
+```
+
+## Run tests
+
+```
+cargo test
 ```
