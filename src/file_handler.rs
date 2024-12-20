@@ -1,4 +1,5 @@
 use crate::error::RegexError;
+use crate::match_result::MatchResult;
 use crate::regex::Regex;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
@@ -40,13 +41,23 @@ impl FileHandler {
     fn process_line(&self, regex: &Regex, line: &str) -> Result<(), RegexError> {
         let result = regex.match_expression(line);
         match result {
-            Ok(result) => {
-                if result {
-                    println!("{}", line);
-                }
+            Ok(Some(match_result)) => {
+                self.print_with_color(line, &match_result);
                 Ok(())
             }
+            Ok(None) => Ok(()),
             Err(err) => Err(err),
         }
+    }
+
+
+    fn print_with_color(&self, line: &str, match_result: &MatchResult) {
+        let (start, end) = match_result.range();
+    println!(
+        "{}\x1b[31m{}\x1b[0m{}",
+        &line[..start],    
+        &line[start..end],
+        &line[end..]
+    );
     }
 }

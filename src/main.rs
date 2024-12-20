@@ -1,10 +1,12 @@
 use grep_rustico::file_handler::FileHandler;
 use std::env;
 
+const EXPECTED_ARG_COUNT: usize = 3;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() != 3 {
+    if args.len() != EXPECTED_ARG_COUNT {
         eprintln!("Invalid arguments, the format is: <expression> <file>");
         return;
     }
