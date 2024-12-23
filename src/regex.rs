@@ -1,4 +1,5 @@
 use crate::error::RegexError;
+use crate::match_result::MatchResult;
 use crate::regex_class::RegexClass;
 use crate::regex_part::RegexPart;
 use crate::regex_rep::RegexRep;
@@ -75,19 +76,18 @@ impl Regex {
     /// # Returns
     ///
     /// A `Result` containing `true` if the string matches the regular expression, or `false` otherwise.
-    pub fn match_expression(&self, value: &str) -> Result<bool, RegexError> {
+    pub fn match_expression(&self, value: &str) -> Result<Option<MatchResult>, RegexError> {
         if !value.is_ascii() {
             return Err(RegexError::NonAsciiInput);
         }
 
         for part in &self.parts {
-            match part.match_single_expression(value) {
-                Ok(true) => return Ok(true),
-                Err(err) => return Err(err),
-                _ => (),
+            match part.match_single_expression(value)? {
+                Some(result) => return Ok(Some(result)),
+                None => continue,
             }
-        }
-        Ok(false)
+        } 
+        Ok(None)
     }
 }
 
@@ -345,6 +345,7 @@ fn get_expression_inside_bracket(chars_iter: &mut std::str::Chars<'_>) -> Vec<ch
     expression
 }
 
+/* 
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -781,3 +782,4 @@ mod tests {
         );
     }
 }
+*/

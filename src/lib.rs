@@ -8,3 +8,4 @@ pub mod regex_part;
 pub mod regex_rep;
 pub mod regex_state;
 pub mod regex_value;
+pub mod match_result;

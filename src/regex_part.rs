@@ -1,5 +1,6 @@
 use crate::error::RegexError;
 use crate::evaluated_state::EvaluatedStep;
+use crate::match_result::MatchResult;
 use crate::regex_rep::RegexRep;
 use crate::regex_state::RegexState;
 use std::collections::VecDeque;
@@ -17,7 +18,7 @@ pub struct RegexPart {
 impl RegexPart {
     /// Tries to match a single expression with the regular expression part.
     /// It returns a boolean indicating if the expression matches the regular expression part.
-    pub fn match_single_expression(&self, value: &str) -> Result<bool, RegexError> {
+    pub fn match_single_expression(&self, value: &str) -> Result<Option<MatchResult>, RegexError> {
         if !value.is_ascii() {
             return Err(RegexError::NonAsciiInput);
         }
@@ -25,6 +26,7 @@ impl RegexPart {
         let mut queue = VecDeque::from(self.states.clone());
         let mut stack = Vec::new();
         let mut index = 0;
+        let mut match_start = index;
 
         'states: while let Some(state) = queue.pop_front() {
             match state.repetition {
@@ -36,9 +38,10 @@ impl RegexPart {
                             match backtrack(state, &mut stack, &mut queue) {
                                 Some(size) => {
                                     index -= size;
+                                    match_start = index;
                                     continue 'states;
                                 }
-                                None => return Ok(false),
+                                None => return Ok(None),
                             }
                         } else {
                             match_size += s;
@@ -63,7 +66,7 @@ impl RegexPart {
                                     index -= size;
                                     continue 'states;
                                 }
-                                None => return Ok(false),
+                                None => return Ok(None),
                             }
                         }
                         stack.push(EvaluatedStep {
@@ -77,9 +80,23 @@ impl RegexPart {
         }
 
         if self.ends_with_dollar {
-            Ok(index == value.len())
+            if index == value.len() {
+                let matched = value[match_start..index].to_string();
+                Ok(Some(MatchResult {
+                    start: match_start,
+                    end: index,
+                    matched,
+                }))
+            } else {
+                Ok(None)
+            }
         } else {
-            Ok(true)
+            let matched = value[match_start..index].to_string();
+            Ok(Some(MatchResult {
+                start: match_start,
+                end: index,
+                matched,
+            }))
         }
     }
 }
